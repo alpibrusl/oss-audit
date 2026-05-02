@@ -21,6 +21,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from .pipeline import run_audit
+from .reporter.badge import to_endpoint_payload, to_markdown, to_shields_url
 from .reporter.markdown import render_markdown
 from .storage import DEFAULT_DB, get_audit, list_audits, save_audit
 
@@ -221,6 +222,75 @@ def show(
 
     def render_text():
         console.print(render_markdown(report))
+
+    _emit_or_render(envelope, output, render_text)
+
+
+@app.command()
+@acli_command(
+    examples=[
+        ("Markdown snippet for the latest audit", "oss-audit badge"),
+        ("Static shields.io URL for audit #3", "oss-audit badge 3 --format url"),
+        ("JSON endpoint payload to commit to your repo",
+         "oss-audit badge --format endpoint --output json > badge.json"),
+    ],
+    idempotent=True,
+    see_also=["audit", "list", "show"],
+)
+def badge(
+    audit_id: int | None = typer.Argument(
+        None, help="Audit ID. Defaults to most recent. type:int"),
+    format_: str = typer.Option(
+        "markdown", "--format",
+        help="markdown | url | endpoint. type:enum[markdown|url|endpoint]"),
+    label: str = typer.Option("oss-audit", "--label", help="Badge label. type:string"),
+    link: str | None = typer.Option(
+        None, "--link", help="URL the badge links to (markdown only). type:string"),
+    output: OutputFormat = typer.Option(
+        OutputFormat.text, help="Output format. type:enum[text|json|table]"),
+) -> None:
+    """Genera un badge shields.io a partir de una auditoría guardada."""
+    start = time.time()
+    if audit_id is None:
+        recent = list_audits(limit=1)
+        if not recent:
+            raise NotFoundError(
+                "No hay auditorías guardadas todavía.",
+                hint="Ejecuta `oss-audit audit <repo>` primero.",
+            )
+        audit_id = recent[0]["id"]
+    report = get_audit(audit_id)
+    if report is None:
+        raise NotFoundError(
+            f"No existe auditoría con id={audit_id}",
+            hint="Ejecuta `oss-audit list` para ver IDs disponibles.",
+        )
+
+    if format_ == "markdown":
+        rendered: str | dict = to_markdown(report, link_url=link, label=label)
+    elif format_ == "url":
+        rendered = to_shields_url(report, label=label)
+    elif format_ == "endpoint":
+        rendered = to_endpoint_payload(report, label=label)
+    else:
+        from acli import InvalidArgsError
+        raise InvalidArgsError(
+            f"Formato desconocido: {format_}",
+            hint="Usa: markdown | url | endpoint",
+        )
+
+    envelope = success_envelope(
+        "badge",
+        {"audit_id": audit_id, "format": format_, "rendered": rendered,
+         "score": report.overall_score, "grade": report.grade},
+        version="0.3.0", start_time=start,
+    )
+
+    def render_text():
+        if isinstance(rendered, dict):
+            console.print_json(data=rendered)
+        else:
+            console.print(rendered)
 
     _emit_or_render(envelope, output, render_text)
 
