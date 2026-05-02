@@ -34,9 +34,15 @@ def run_audit(source: str, skip_business: bool = False,
 
         report = AuditReport(repo=meta)
 
-        if not skip_technical:
+        is_proposal = meta.repo_type == "proposal"
+        if is_proposal:
+            step(f"📜 Tipo detectado: proposal — {meta.repo_type_reason}")
+
+        if not skip_technical and not is_proposal:
             step(f"🔧 Análisis técnico ({meta.primary_language or 'multi-lang'})...")
             report.technical = audit_technical(meta, repo_path)
+        elif is_proposal:
+            step("🔧 Pilar técnico omitido para `proposal` (no es el artefacto).")
 
         if not skip_business:
             step("💼 Construyendo contexto de negocio...")

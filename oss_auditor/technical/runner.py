@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..models import Finding, RepoMeta, TechnicalReport
+from .composability import score_composability
 from .lang_runners import run_for_languages
 from .universal import universal_checks
 
@@ -23,6 +24,7 @@ def audit_technical(meta: RepoMeta, repo_path: Path) -> TechnicalReport:
     """
     universal = universal_checks(repo_path)
     lang_results = run_for_languages(repo_path, meta.languages)
+    comp_score, comp_surfaces = score_composability(repo_path)
 
     findings: list[Finding] = list(universal.get("secret_findings", []))
     tools_run: list[str] = []
@@ -55,9 +57,9 @@ def audit_technical(meta: RepoMeta, repo_path: Path) -> TechnicalReport:
     # ----- Scoring -----
     score = 0.0
 
-    # Tests: 15
+    # Tests presencia: 8
     if universal["has_tests"]:
-        score += 15
+        score += 8
     else:
         findings.append(Finding(
             severity="medium", category="testing",
@@ -65,6 +67,23 @@ def audit_technical(meta: RepoMeta, repo_path: Path) -> TechnicalReport:
             detail="Heurística por nombres de archivo no encontró tests.",
             recommendation="Añadir suite de tests aumenta confianza y empleabilidad del repo.",
         ))
+
+    # Densidad de tests: 0-4 (test_files / source_files)
+    density = universal.get("test_density", 0.0)
+    if density >= 0.5:
+        score += 4
+    elif density >= 0.25:
+        score += 3
+    elif density >= 0.10:
+        score += 2
+    elif density >= 0.05:
+        score += 1
+
+    # Fuzz / property tests: 3 (fuzz) + 2 (property)
+    if universal.get("has_fuzz_tests"):
+        score += 3
+    if universal.get("has_property_tests"):
+        score += 2
 
     # CI: 10
     if universal["has_ci"]:
@@ -123,8 +142,11 @@ def audit_technical(meta: RepoMeta, repo_path: Path) -> TechnicalReport:
             recommendation="Añadir LICENSE explícito (MIT, Apache-2.0, etc.).",
         ))
 
-    # Reportes que corrieron: bonus de cobertura de análisis (hasta 10)
-    coverage_bonus = min(len(tools_run) * 2, 10)
+    # Composabilidad (CLI + library + MCP + HTTP + workspace): 0-10
+    score += comp_score
+
+    # Reportes que corrieron: bonus de cobertura de análisis (hasta 5)
+    coverage_bonus = min(len(tools_run) * 2, 5)
     score += coverage_bonus
 
     score = min(round(score, 1), 100.0)
@@ -133,9 +155,14 @@ def audit_technical(meta: RepoMeta, repo_path: Path) -> TechnicalReport:
         score=score,
         has_tests=universal["has_tests"],
         has_ci=universal["has_ci"],
+        test_density=universal.get("test_density", 0.0),
+        has_fuzz_tests=universal.get("has_fuzz_tests", False),
+        has_property_tests=universal.get("has_property_tests", False),
         secrets_found=secrets,
         vulnerabilities=total_vulns,
         lint_issues=total_lint_warnings + total_lint_errors,
+        composability_score=comp_score,
+        composability_surfaces=comp_surfaces,
         tools_run=tools_run,
         findings=findings,
         raw={
