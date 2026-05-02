@@ -1,6 +1,7 @@
 # OSS Auditor
 
-[![OSS Audit](https://img.shields.io/badge/oss--audit-46.3%2F100_bronze-yellow)](.)
+[![OSS Audit (technical)](https://img.shields.io/badge/oss--audit-89.0%2F100_gold-brightgreen)](.oss-audit.md)
+[![CI](https://github.com/alpibrusl/oss-audit/actions/workflows/ci.yml/badge.svg)](https://github.com/alpibrusl/oss-audit/actions/workflows/ci.yml)
 [![License: EUPL-1.2](https://img.shields.io/badge/license-EUPL--1.2-blue)](LICENSE)
 
 Una herramienta de auditoría que no se limita a darte un número: te dice **qué hacer** con la información — adoptar, contribuir, financiar, esperar o pasar.
@@ -76,6 +77,8 @@ El pilar de tesis & innovación necesita un LLM. Tres caminos, auto-detectados o
 | `claude-agent-sdk` | Tienes el CLI `claude` instalado | **Tu suscripción Pro/Max** (sin API key) |
 | `anthropic-api` | `ANTHROPIC_API_KEY=sk-ant-…` | Console billing (separado de tu sub) |
 | `openai-compatible` | `OPENAI_API_KEY=…` + `OPENAI_BASE_URL=…` | OpenAI / OpenRouter / Groq / Ollama / vLLM / LM Studio |
+
+**¿Sin nada de eso configurado?** Corre con `--skip-business` y verás todas las señales locales (técnico + comunidad + agent-readiness + composability + verdict programático). El veredicto será conservador sin el aporte del LLM, pero todo lo demás funciona.
 
 ```bash
 # Override explícito

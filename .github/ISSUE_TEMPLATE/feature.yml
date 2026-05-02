@@ -1,0 +1,39 @@
+name: Feature request
+description: Nueva señal, nuevo backend, nuevo runner de lenguaje, nueva categoría de repo type.
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - "agent-readiness signal (CLAUDE.md, etc.)"
+        - "composability surface (CLI / library / MCP / ...)"
+        - "language runner (Java, Kotlin, Swift, Ruby, ...)"
+        - "LLM backend"
+        - "repo type (dataset / research / hardware / tutorial / standard)"
+        - "verdict / counterfactual / audience view"
+        - "reporter / output format"
+        - "other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Qué problema resuelve
+      description: ¿Qué señal real estás perdiendo hoy? ¿En qué tipo de repos?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Propuesta concreta
+      description: Si tenés idea del shape de la API, código, o estructura, escribilo aquí.
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: 1–3 repos donde aplicaría
+      description: Help us validar que el feature genera valor en casos reales, no hipotéticos.
