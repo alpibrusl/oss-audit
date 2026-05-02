@@ -21,6 +21,7 @@ def make_fake_repo(tmpdir: Path) -> Path:
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
     subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=repo, check=True)
     subprocess.run(["git", "config", "user.name", "test"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "commit.gpgsign", "false"], cwd=repo, check=True)
 
     (repo / "README.md").write_text("# Fake\n\nA test repo.\n")
     (repo / "LICENSE").write_text("MIT License\nCopyright (c) 2024\n")
