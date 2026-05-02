@@ -238,5 +238,5 @@ def render_markdown(report: AuditReport) -> str:
         lines.append("")
 
     lines.append("---")
-    lines.append(f"_Generado por OSS Auditor v0.6.0_")
+    lines.append("_Generado por OSS Auditor v0.6.0_")
     return "\n".join(lines)

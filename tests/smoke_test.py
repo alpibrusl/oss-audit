@@ -4,7 +4,6 @@ Ejecuta el pilar técnico sobre un mini-repo creado en tmp.
 """
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 import tempfile
