@@ -29,7 +29,7 @@ load_dotenv()
 
 app = ACLIApp(
     name="oss-audit",
-    version="0.4.0",
+    version="0.5.0",
     help="Auditoría integral de proyectos open-source: técnico + negocio + comunidad.",
 )
 console = Console()
@@ -62,9 +62,26 @@ def _render_audit_summary(report) -> None:
     table.add_column("Score", justify="right")
     table.add_column("Peso", justify="right")
     table.add_row("🔧 Técnico", f"{report.technical.score:.1f}", "40%")
-    table.add_row("💼 Negocio", f"{report.business.score:.1f}", "35%")
+    table.add_row("💡 Tesis & innovación", f"{report.business.score:.1f}", "35%")
     table.add_row("👥 Comunidad", f"{report.community.score:.1f}", "25%")
     console.print(table)
+
+    v = report.verdict
+    if v.code:
+        verdict_color = {
+            "bet-on-it": "bright_green", "worth-helping": "yellow",
+            "ahead-of-its-time": "cyan", "promising-prototype": "blue",
+            "solid-commodity": "white", "skill-in-search": "magenta",
+            "incomplete-thesis": "red", "pass": "bright_red",
+        }.get(v.code, "white")
+        console.print()
+        console.print(Panel.fit(
+            f"[bold]{v.label}[/bold]  [dim](idea: {v.idea_band} · "
+            f"exec: {v.execution_band} · relevance: {v.relevance_band})[/dim]\n"
+            f"{v.one_liner}",
+            title=f"Veredicto: {v.code}", border_style=verdict_color,
+        ))
+
     if report.executive_summary:
         console.print()
         console.print(Panel(report.executive_summary, title="Resumen ejecutivo",
@@ -141,7 +158,7 @@ def audit(
         data["report_file"] = str(out_file)
 
     envelope = success_envelope(
-        "audit", data, version="0.4.0", start_time=start)
+        "audit", data, version="0.5.0", start_time=start)
 
     def render_text():
         _render_audit_summary(report)
@@ -172,7 +189,7 @@ def list_cmd(
     audits = list_audits(limit=limit)
     envelope = success_envelope(
         "list", {"audits": audits, "count": len(audits)},
-        version="0.4.0", start_time=start)
+        version="0.5.0", start_time=start)
 
     def render_text():
         if not audits:
@@ -218,7 +235,7 @@ def show(
         )
     envelope = success_envelope(
         "show", report.model_dump(mode="json"),
-        version="0.4.0", start_time=start)
+        version="0.5.0", start_time=start)
 
     def render_text():
         console.print(render_markdown(report))
@@ -283,7 +300,7 @@ def badge(
         "badge",
         {"audit_id": audit_id, "format": format_, "rendered": rendered,
          "score": report.overall_score, "grade": report.grade},
-        version="0.4.0", start_time=start,
+        version="0.5.0", start_time=start,
     )
 
     def render_text():
