@@ -1,0 +1,62 @@
+"""Orquestador end-to-end: ingesta -> 3 pilares -> reporte final."""
+from __future__ import annotations
+
+import shutil
+import tempfile
+from pathlib import Path
+
+from .business.analyzer import analyze_business
+from .business.context_builder import build_business_context
+from .community.github_metrics import audit_community
+from .ingestion import ingest
+from .models import AuditReport
+from .reporter.scorer import compute_overall, top_recommendations
+from .technical.runner import audit_technical
+
+
+def run_audit(source: str, skip_business: bool = False,
+              skip_community: bool = False, skip_technical: bool = False,
+              progress=None) -> AuditReport:
+    """Pipeline completo. Devuelve un AuditReport.
+
+    `progress` puede ser un callable(label: str) para reportar avances.
+    """
+    def step(label: str):
+        if progress:
+            progress(label)
+
+    step("📥 Ingesta del repo...")
+    workdir = Path(tempfile.mkdtemp(prefix="oss-audit-"))
+    cleanup_needed = False
+    try:
+        meta, repo_path = ingest(source, workdir=workdir)
+        cleanup_needed = meta.is_remote
+
+        report = AuditReport(repo=meta)
+
+        if not skip_technical:
+            step(f"🔧 Análisis técnico ({meta.primary_language or 'multi-lang'})...")
+            report.technical = audit_technical(meta, repo_path)
+
+        if not skip_business:
+            step("💼 Construyendo contexto de negocio...")
+            ctx = build_business_context(meta, repo_path)
+            step(f"💼 Análisis de negocio con Claude ({ctx.get('_token_estimate', 0):,} tokens)...")
+            report.business = analyze_business(ctx)
+
+        if not skip_community:
+            step("👥 Métricas de comunidad (GitHub API)...")
+            report.community = audit_community(meta)
+
+        step("📊 Cálculo de score y recomendaciones...")
+        overall, grade = compute_overall(report)
+        report.overall_score = overall
+        report.grade = grade
+        report.top_recommendations = top_recommendations(report)
+        if report.business.summary:
+            report.executive_summary = report.business.summary
+
+        return report
+    finally:
+        if cleanup_needed and workdir.exists():
+            shutil.rmtree(workdir, ignore_errors=True)
