@@ -7,10 +7,12 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 
 import httpx
 
 from ..models import CommunityReport, Finding, RepoMeta
+from .agent_readiness import score_agent_readiness
 
 GH_API = "https://api.github.com"
 
@@ -43,11 +45,22 @@ def _days_since(iso: str | None) -> int | None:
         return None
 
 
-def audit_community(meta: RepoMeta) -> CommunityReport:
-    """Audita métricas de comunidad. Solo funciona con repos en GitHub."""
+def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityReport:
+    """Audita métricas de comunidad. Solo funciona con repos en GitHub.
+
+    `repo_path` se usa para detectar agent-readiness (señales locales:
+    CLAUDE.md, AGENTS.md, .cli/, mcp.json, etc.). Si no se pasa, se omite.
+    """
+    ar_score = 0
+    ar_signals: list[str] = []
+    if repo_path is not None:
+        ar_score, ar_signals = score_agent_readiness(repo_path)
+
     if not meta.owner or not meta.name:
         return CommunityReport(
-            score=0.0,
+            score=float(ar_score),
+            agent_readiness_score=ar_score,
+            agent_readiness_signals=ar_signals,
             findings=[Finding(
                 severity="info", category="community",
                 title="Métricas de comunidad no disponibles",
@@ -61,7 +74,9 @@ def audit_community(meta: RepoMeta) -> CommunityReport:
         status, repo_data = _get(client, f"/repos/{meta.owner}/{meta.name}")
         if status != 200 or not isinstance(repo_data, dict):
             return CommunityReport(
-                score=0.0,
+                score=float(ar_score),
+                agent_readiness_score=ar_score,
+                agent_readiness_signals=ar_signals,
                 findings=[Finding(
                     severity="info", category="community",
                     title=f"GitHub API devolvió status {status}",
@@ -119,10 +134,13 @@ def audit_community(meta: RepoMeta) -> CommunityReport:
             if durations:
                 avg_close_days = round(sum(durations) / len(durations), 1)
 
-    # ----- Scoring -----
+    # ----- Scoring (v0.2: alive + adopted, no headcount tax) -----
+    # Pesos: stars 25 / velocity 30 / recency 15 / agent-readiness 10 /
+    #        diversity 10 / releases 5 / close-time 5 = 100
+    # Bus factor ya NO es un score lever — sale como finding contextual.
     score = 0.0
 
-    # Adopción (stars): 25 puntos, log-ish
+    # Adopción (stars): 25
     if stars >= 1000:
         score += 25
     elif stars >= 100:
@@ -134,32 +152,13 @@ def audit_community(meta: RepoMeta) -> CommunityReport:
     else:
         score += max(stars, 0)
 
-    # Bus factor: 25
-    if bus_top1 == 0:
-        bus_score = 0.0
-    elif bus_top1 < 30:
-        bus_score = 25.0
-    elif bus_top1 < 50:
-        bus_score = 18.0
-    elif bus_top1 < 70:
-        bus_score = 10.0
-    else:
-        bus_score = 4.0
-        findings.append(Finding(
-            severity="high", category="community",
-            title=f"Bus factor crítico: {bus_top1}% de commits de un solo autor",
-            detail="Riesgo alto de abandono si el autor principal se va.",
-            recommendation="Atraer contribuidores con 'good first issues' y documentar bien.",
-        ))
-    score += bus_score
-
-    # Velocity (commits últimos 90d): 20
+    # Velocity (commits últimos 90d): 30
     if commits_90d >= 50:
-        score += 20
+        score += 30
     elif commits_90d >= 15:
-        score += 15
+        score += 22
     elif commits_90d >= 3:
-        score += 8
+        score += 12
     elif commits_90d == 0:
         findings.append(Finding(
             severity="medium", category="community",
@@ -167,14 +166,17 @@ def audit_community(meta: RepoMeta) -> CommunityReport:
             detail="Proyecto inactivo; señal de posible abandono.",
         ))
 
-    # Recencia: 10
+    # Recencia: 15
     if last_commit_days is not None:
         if last_commit_days <= 14:
-            score += 10
+            score += 15
         elif last_commit_days <= 60:
-            score += 6
+            score += 9
         elif last_commit_days <= 180:
-            score += 3
+            score += 4
+
+    # Agent-readiness: 10
+    score += ar_score
 
     # Diversidad de contribuidores: 10
     if contributors_count >= 20:
@@ -195,6 +197,28 @@ def audit_community(meta: RepoMeta) -> CommunityReport:
         elif avg_close_days <= 30:
             score += 3
 
+    # ----- Bus factor: contexto, no score -----
+    # Solo-autor + actividad reciente = NO abandonado, solo riesgo de continuidad.
+    # Solo-autor + sin actividad = sí preocupante.
+    is_solo = bus_top1 >= 70
+    is_active = commits_90d >= 5 or (last_commit_days is not None and last_commit_days <= 30)
+    is_solo_active = is_solo and is_active
+
+    if is_solo and not is_active:
+        findings.append(Finding(
+            severity="high", category="community",
+            title=f"Riesgo de abandono: bus factor {bus_top1}% sin actividad reciente",
+            detail="Autor único y sin commits recientes — combinación típica de proyectos abandonados.",
+            recommendation="Verificar el estado del proyecto antes de adoptarlo en producción.",
+        ))
+    elif is_solo:
+        findings.append(Finding(
+            severity="info", category="community",
+            title=f"Proyecto solo-autor activo ({bus_top1}% top contributor)",
+            detail="Común en la era de agentes IA. Riesgo de continuidad real, pero no señal de baja calidad.",
+            recommendation="Considerar el riesgo de continuidad: ¿cuál sería tu plan si el autor se va?",
+        ))
+
     score = min(round(score, 1), 100.0)
 
     return CommunityReport(
@@ -210,5 +234,8 @@ def audit_community(meta: RepoMeta) -> CommunityReport:
         avg_issue_close_days=avg_close_days,
         last_commit_days_ago=last_commit_days,
         has_releases=has_releases,
+        agent_readiness_score=ar_score,
+        agent_readiness_signals=ar_signals,
+        is_solo_active=is_solo_active,
         findings=findings,
     )

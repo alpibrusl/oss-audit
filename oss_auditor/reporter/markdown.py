@@ -147,7 +147,15 @@ def render_markdown(report: AuditReport) -> str:
     if c.avg_issue_close_days is not None:
         lines.append(f"| Tiempo medio cierre issues | {c.avg_issue_close_days:.1f} días |")
     lines.append(f"| Tiene releases | {'Sí' if c.has_releases else 'No'} |")
+    lines.append(f"| Agent-readiness | {c.agent_readiness_score}/10 |")
+    if c.is_solo_active:
+        lines.append("| Modo solo-autor | activo (no abandonado) |")
     lines.append("")
+    if c.agent_readiness_signals:
+        lines.append("**Señales agent-ready detectadas:**")
+        for s in c.agent_readiness_signals:
+            lines.append(f"- {s}")
+        lines.append("")
     if c.findings:
         lines.append("### Hallazgos de comunidad")
         for f in c.findings:
@@ -157,5 +165,5 @@ def render_markdown(report: AuditReport) -> str:
         lines.append("")
 
     lines.append("---")
-    lines.append(f"_Generado por OSS Auditor v0.1.0_")
+    lines.append(f"_Generado por OSS Auditor v0.2.0_")
     return "\n".join(lines)

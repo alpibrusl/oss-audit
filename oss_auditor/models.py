@@ -74,6 +74,9 @@ class CommunityReport(BaseModel):
     avg_issue_close_days: float | None = None
     last_commit_days_ago: int | None = None
     has_releases: bool = False
+    agent_readiness_score: int = 0  # 0-10, see community/agent_readiness.py
+    agent_readiness_signals: list[str] = Field(default_factory=list)
+    is_solo_active: bool = False  # solo author + recent commits → not abandoned
     findings: list[Finding] = Field(default_factory=list)
 
 
