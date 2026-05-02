@@ -1,18 +1,18 @@
-# Política de seguridad
+# Security policy
 
-OSS Auditor está en alpha (`v0.5.x`); no hay un canal privado de divulgación todavía. Si encontrás una vulnerabilidad:
+OSS Auditor is alpha (`v0.5.x`); there's no private disclosure channel yet. If you find a vulnerability:
 
-- **Privada / sensible** (p. ej. ejecución arbitraria al auditar un repo malicioso, leak de variables de entorno, etc.): abre una issue **vacía** y mencioná `@alpibrusl` para que te contactemos en privado por mail. No publiques los detalles en la issue.
-- **Pública / baja severidad** (un secret pattern que no detecta, un falso positivo en `agent_readiness`, etc.): issue normal con label `security`.
+- **Private / sensitive** (e.g. arbitrary code execution when auditing a malicious repo, environment-variable leaks, etc.): open an **empty** issue and mention `@alpibrusl` so we can reach you privately by email. Don't post the details in the issue.
+- **Public / low severity** (a secret pattern that misses, a false positive in `agent_readiness`, etc.): a regular issue with the `security` label.
 
-## Áreas de riesgo conocidas
+## Known risk areas
 
-- `ingestion.py` ejecuta `git clone --depth 1` contra URLs arbitrarias provistas por el usuario. No ejecuta hooks de git pero un repo malicioso podría intentar abusar de bugs de git mismo.
-- El pilar técnico **no ejecuta** código del repo auditado salvo herramientas explícitas (cargo audit, ruff, npm audit, govulncheck) que sí parsean el árbol de dependencias. Si no confías en el repo, audita en sandbox.
-- `business/analyzer.py` envía contenido del repo (README, manifests, muestras de código, commits, issues) al backend LLM configurado. Si auditás repos privados, asegúrate de que tu backend respete la confidencialidad (no `openai-compatible` con base URL público para datos sensibles).
+- `ingestion.py` runs `git clone --depth 1` against arbitrary URLs supplied by the user. It doesn't run git hooks, but a malicious repo could still attempt to abuse bugs in git itself.
+- The technical pillar **does not execute** code from the audited repo, except for explicit tools (cargo audit, ruff, npm audit, govulncheck) that do parse the dependency tree. If you don't trust the repo, audit it inside a sandbox.
+- `business/analyzer.py` sends repo content (README, manifests, code samples, commits, issues) to the configured LLM backend. If you audit private repos, make sure your backend respects confidentiality (no `openai-compatible` with a public base URL for sensitive data).
 
-## Lo que NO hacemos
+## What we do NOT do
 
-- Procesar repos de >1GB sin truncado explícito.
-- Ejecutar tests del repo auditado (eso requiere su propio sandboxing).
-- Recursar en `node_modules`, `target/`, `.git/`, etc.
+- Process repos larger than 1 GB without explicit truncation.
+- Run the audited repo's tests (that needs its own sandboxing).
+- Recurse into `node_modules`, `target/`, `.git/`, etc.

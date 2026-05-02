@@ -4,21 +4,21 @@
 [![CI](https://github.com/alpibrusl/oss-audit/actions/workflows/ci.yml/badge.svg)](https://github.com/alpibrusl/oss-audit/actions/workflows/ci.yml)
 [![License: EUPL-1.2](https://img.shields.io/badge/license-EUPL--1.2-blue)](LICENSE)
 
-Una herramienta de auditoría que no se limita a darte un número: te dice **qué hacer** con la información — adoptar, contribuir, financiar, esperar o pasar.
+An audit tool that doesn't stop at giving you a number: it tells you **what to do** with the information — adopt, contribute, fund, wait, or pass.
 
-> ⚠️ **Estado: alpha (v0.5.x).** API y rúbrica pueden cambiar entre versiones menores. Se busca feedback de auditorías reales para calibrar.
+> ⚠️ **Status: alpha (v0.5.x).** The API and the rubric may change between minor versions. We're collecting feedback from real audits to calibrate.
 
-## Por qué otra herramienta de "OSS quality"
+## Why another "OSS quality" tool
 
-Las herramientas existentes (OpenSSF Scorecard, Snyk, Sonar) miden **calidad de proceso** — bien para detectar abandono y vulnerabilidades, mal para distinguir un proyecto innovador de uno derivado. Su rúbrica asume implícitamente que "buen OSS = equipo grande + historia larga", lo cual penaliza injustamente a la categoría que más está creciendo: **proyectos solo-autor + agentes IA**.
+Existing tools (OpenSSF Scorecard, Snyk, Sonar) measure **process quality** — good for spotting abandonment and vulnerabilities, bad at telling an innovative project apart from a derivative one. Their rubrics implicitly assume "good OSS = large team + long history", which unfairly penalizes the fastest-growing category: **solo-author + AI-agent projects**.
 
-OSS Auditor está construido alrededor de tres convicciones:
+OSS Auditor is built around three convictions:
 
-1. **La era post-LLM cambió el juego.** Una persona + agentes IA puede shipear al ritmo de un equipo de 5. Bus factor `94% de un autor` no es señal de baja calidad si los commits son diarios — es señal de continuidad, no de ejecución.
-2. **Medir ejecución no basta.** Un repo con 92/100 en métricas técnicas puede ser un clon irrelevante. La pregunta importante es **idea × ejecución × relevancia**, no solo ejecución.
-3. **Un score sin acción es ruido.** El reporte tiene que responder a "¿lo uso? ¿lo adopto? ¿lo financio?" en función de la audiencia que lee.
+1. **The post-LLM era changed the game.** One person plus AI agents can ship at the pace of a five-person team. A bus factor of `94% one author` isn't a quality red flag if commits are daily — it's a continuity signal, not an execution one.
+2. **Measuring execution isn't enough.** A repo with 92/100 on technical metrics can still be an irrelevant clone. The real question is **idea × execution × relevance**, not execution alone.
+3. **A score without an action is noise.** The report has to answer "do I use it? do I adopt it? do I fund it?" depending on who's reading.
 
-## Demo: `lex-lang` auditado por OSS Auditor
+## Demo: `lex-lang` audited by OSS Auditor
 
 ```
 ╭───────────────── OSS Auditor ──────────────────╮
@@ -26,31 +26,31 @@ OSS Auditor está construido alrededor de tres convicciones:
 │ Score: 62.4/100 (SILVER)                       │
 ╰────────────────────────────────────────────────╯
 
-Pilares:
-  🔧 Técnico             98.0    40%
-  💡 Tesis & innovación  64.9    35%
-  👥 Comunidad            2.0    25%
+Pillars:
+  🔧 Technical            98.0    40%
+  💡 Thesis & innovation  64.9    35%
+  👥 Community             2.0    25%
 
-╭──── Veredicto: ahead-of-its-time ──────────────╮
+╭──── Verdict: ahead-of-its-time ────────────────╮
 │ Ahead of its time                              │
 │ (idea: high · exec: high · relevance: low)     │
-│ Trabajo brillante sin mercado todavía. Sigue   │
-│ de cerca; no apuestes hoy.                     │
+│ Brilliant work without a market yet. Track it  │
+│ closely; don't bet on it today.                │
 ╰────────────────────────────────────────────────╯
 ```
 
-Vista por audiencia (extracto):
-- **Developer**: "Si sos contributor, el código es limpio y la arquitectura instructiva, pero no hay usuarios que validen si tu trabajo importa todavía."
-- **CTO**: "Stack risk medio-alto. Esperaría hasta 1.0+ + 2-3 contribuidores externos + un case study real."
-- **Investor**: "Fundable conceptualmente. Pre-seed máximo. Riesgo principal: mercado."
+Audience views (excerpt):
+- **Developer**: "If you're a contributor, the code is clean and the architecture instructive, but there are no users validating that your work matters yet."
+- **CTO**: "Medium-high stack risk. I'd wait until 1.0+ with 2-3 external contributors and a real case study."
+- **Investor**: "Conceptually fundable. Pre-seed at most. Main risk: market."
 
-Mind-changers (qué cambiaría la evaluación):
-1. Adopción por ≥1 agente IA mainstream (Claude, ChatGPT, Gemini) usándolo como sandbox por defecto.
-2. 5+ contribuidores externos con commits meaningful en 6 meses.
-3. Paper en PLDI/ICFP o citas en research de AI safety / code-gen.
-4. Compiler de Lex reescrito en Lex mismo (dogfooding).
+Mind-changers (what would change the assessment):
+1. Adoption by ≥1 mainstream AI agent (Claude, ChatGPT, Gemini) using it as a default sandbox.
+2. 5+ external contributors with meaningful commits in 6 months.
+3. A paper at PLDI/ICFP, or citations in AI safety / code-gen research.
+4. The Lex compiler rewritten in Lex itself (dogfooding).
 
-## Instalación
+## Installation
 
 ```bash
 git clone https://github.com/alpibrusl/oss-audit
@@ -58,152 +58,152 @@ cd oss-audit
 pip install -e .
 ```
 
-Herramientas externas opcionales (mejoran el pilar técnico si están en `$PATH`):
+Optional external tools (boost the technical pillar when present in `$PATH`):
 
-| Tool | Para |
-|------|------|
-| `gitleaks` | escaneo de secretos más completo |
+| Tool | For |
+|------|-----|
+| `gitleaks` | richer secret scanning |
 | `cargo` + `cargo-audit` | Rust |
 | `ruff`, `pip-audit` | Python |
 | `npm` | JS / TS |
 | `govulncheck` | Go |
 
-## Backend LLM
+## LLM backend
 
-El pilar de tesis & innovación necesita un LLM. Tres caminos, auto-detectados o forzados con `OSS_AUDITOR_BACKEND`:
+The thesis & innovation pillar needs an LLM. Three options, auto-detected or forced via `OSS_AUDITOR_BACKEND`:
 
-| Opción | Cómo | Auth |
-|--------|------|------|
-| `claude-agent-sdk` | Tienes el CLI `claude` instalado | **Tu suscripción Pro/Max** (sin API key) |
-| `anthropic-api` | `ANTHROPIC_API_KEY=sk-ant-…` | Console billing (separado de tu sub) |
+| Option | How | Auth |
+|--------|-----|------|
+| `claude-agent-sdk` | You have the `claude` CLI installed | **Your Pro/Max subscription** (no API key) |
+| `anthropic-api` | `ANTHROPIC_API_KEY=sk-ant-…` | Console billing (separate from your sub) |
 | `openai-compatible` | `OPENAI_API_KEY=…` + `OPENAI_BASE_URL=…` | OpenAI / OpenRouter / Groq / Ollama / vLLM / LM Studio |
 
-**¿Sin nada de eso configurado?** Corre con `--skip-business` y verás todas las señales locales (técnico + comunidad + agent-readiness + composability + verdict programático). El veredicto será conservador sin el aporte del LLM, pero todo lo demás funciona.
+**Got none of those configured?** Run with `--skip-business` and you'll still get every local signal (technical + community + agent-readiness + composability + programmatic verdict). Without the LLM the verdict will be conservative, but everything else works.
 
 ```bash
-# Override explícito
+# Explicit override
 export OSS_AUDITOR_BACKEND=openai-compatible
-export OPENAI_BASE_URL=http://localhost:11434/v1   # Ollama local
+export OPENAI_BASE_URL=http://localhost:11434/v1   # local Ollama
 export OSS_AUDITOR_MODEL=llama3.1:70b
 ```
 
-GitHub token recomendado pero opcional (sin él, el ratelimit es 60 req/h):
+A GitHub token is recommended but optional (without one the rate limit is 60 req/h):
 
 ```bash
 GITHUB_TOKEN=ghp_…
 ```
 
-## Uso
+## Usage
 
 ```bash
-# Audit completo (técnico + tesis + comunidad)
+# Full audit (technical + thesis + community)
 oss-audit audit https://github.com/alpibrusl/lex-lang
 
-# Solo señales locales, sin LLM ni GitHub API
-oss-audit audit ~/code/mi-proyecto --skip-business --skip-community
+# Local signals only, no LLM nor GitHub API
+oss-audit audit ~/code/my-project --skip-business --skip-community
 
-# JSON envelope para agentes / scripts
+# JSON envelope for agents / scripts
 oss-audit audit https://github.com/alpibrusl/lex-lang --output json
 
-# Repos tipo "proposal" (gists, RFC, specs)
+# "Proposal"-type repos (gists, RFCs, specs)
 oss-audit audit https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
 
-# Listar / ver auditorías guardadas
+# List / show stored audits
 oss-audit list
 oss-audit show 1
 
-# Generar badge shields.io para README
-oss-audit badge                            # markdown del último audit
-oss-audit badge 1 --format url             # URL estática
-oss-audit badge 1 --format endpoint        # JSON para img.shields.io/endpoint?url=…
+# Generate a shields.io badge for the README
+oss-audit badge                            # markdown for the latest audit
+oss-audit badge 1 --format url             # static URL
+oss-audit badge 1 --format endpoint        # JSON for img.shields.io/endpoint?url=…
 
-# Web local para navegar el histórico
+# Local web UI to browse history
 oss-audit serve
 
-# Auto-descubrimiento para agentes
-oss-audit introspect    # árbol completo de comandos como JSON
+# Auto-discovery for agents
+oss-audit introspect    # full command tree as JSON
 ```
 
-## Conceptos clave
+## Key concepts
 
-### Tipo de artefacto
-Antes de scorear, OSS Auditor clasifica el repo:
-- **`implementation`** — código es el artefacto (la mayoría).
-- **`proposal`** — el spec / idea es el artefacto (gists, RFCs, "ideas con tracción"). Auto-detectado por URL de gist o por low-LOC + heavy README + traction. En modo proposal el pilar técnico se **omite** y los pesos se renormalizan.
+### Artifact type
+Before scoring, OSS Auditor classifies the repo:
+- **`implementation`** — the code is the artifact (most repos).
+- **`proposal`** — the spec / idea is the artifact (gists, RFCs, "ideas with traction"). Auto-detected from gist URLs or from low-LOC + heavy README + traction. In proposal mode the technical pillar is **skipped** and the weights are renormalized.
 
-### Tres pilares
-| Pilar | Peso | Qué mide |
-|-------|------|----------|
-| 🔧 Técnico | 40% | Tests, densidad de tests, fuzz / property tests, CI, secretos, vulns, lint, licencia, **composabilidad** (CLI / library / MCP / HTTP / workspace) |
-| 💡 Tesis & innovación | 35% | Claridad del problema, gap ambición vs ejecución, diferenciación, señales de mercado, **contribución intelectual** (¿cita-able como prior art futura?) |
-| 👥 Comunidad | 25% | Stars / forks / contribuidores, **velocity-per-author** (señal AI-era), recencia, agent-readiness (CLAUDE.md, .cli/, mcp.json, …), bus factor (como contexto, no como castigo) |
+### Three pillars
+| Pillar | Weight | What it measures |
+|--------|--------|------------------|
+| 🔧 Technical | 40% | Tests, test density, fuzz / property tests, CI, secrets, vulns, lint, license, **composability** (CLI / library / MCP / HTTP / workspace) |
+| 💡 Thesis & innovation | 35% | Problem clarity, ambition-vs-execution gap, differentiation, market signals, **intellectual contribution** (citable as future prior art?) |
+| 👥 Community | 25% | Stars / forks / contributors, **velocity-per-author** (AI-era signal), recency, agent-readiness (CLAUDE.md, .cli/, mcp.json, …), bus factor (as context, not as punishment) |
 
-### Veredicto (capa de advisor)
-Combinación de tres ejes (idea × ejecución × relevancia, cada uno `low`/`medium`/`high`) → uno de 8 veredictos:
+### Verdict (advisor layer)
+A combination of three axes (idea × execution × relevance, each `low`/`medium`/`high`) maps to one of 8 verdicts:
 
-| Verdict | Cuándo | Acción |
-|---------|--------|--------|
-| `bet-on-it` | high / high / high | Adopta, contribuye, invierte |
-| `worth-helping` | high / low / high+ | Buena idea, ejecución débil → forkear, financiar |
-| `promising-prototype` | high / med / med | Watch, revisar en 3 meses |
-| `ahead-of-its-time` | high / high / **low** | Track, no apostar hoy |
-| `solid-commodity` | low / high / high+ | Adopta si lo necesitas, sin upside |
-| `skill-in-search` | low / high / low | Talento reutilizable; proyecto no |
-| `incomplete-thesis` | medium / low / low | Sin señal suficiente |
+| Verdict | When | Action |
+|---------|------|--------|
+| `bet-on-it` | high / high / high | Adopt, contribute, invest |
+| `worth-helping` | high / low / high+ | Good idea, weak execution → fork, fund |
+| `promising-prototype` | high / med / med | Watch, revisit in 3 months |
+| `ahead-of-its-time` | high / high / **low** | Track, don't bet today |
+| `solid-commodity` | low / high / high+ | Adopt if you need it; no upside |
+| `skill-in-search` | low / high / low | Talent is reusable; the project isn't |
+| `incomplete-thesis` | medium / low / low | Not enough signal |
 | `pass` | (default) | Skip |
 
-Cada veredicto trae acciones pre-bakead para developer / CTO / investor.
+Each verdict ships pre-baked actions for developer / CTO / investor.
 
-### Vistas por audiencia
-Cada audit (con LLM) emite tres párrafos cortos basados en la **misma evidencia** pero framed para quién lee:
-- **Developer**: ¿lo uso en prod? ¿contribuyo? ¿aprendo de él?
-- **CTO / VP-Eng**: adopt / pilot / wait / pass + stack risk + ¿equipo hireable?
-- **Investor**: fundable / stage match + riesgo (técnico / mercado / equipo)
+### Audience views
+Every audit (with the LLM enabled) emits three short paragraphs based on the **same evidence** but framed for the reader:
+- **Developer**: do I use it in prod? do I contribute? do I learn from it?
+- **CTO / VP-Eng**: adopt / pilot / wait / pass + stack risk + is the team hireable?
+- **Investor**: fundable / stage match + risk (technical / market / team)
 
-### Counterfactuals — "qué cambiaría mi opinión"
-Dos tipos:
-- **Programáticos**: simulan +30 al pilar más débil; si el veredicto cambia, lo reportan.
-- **LLM `mind_changers`**: señales observables falsables — *"si X aparece en N meses, mi evaluación cambia."*
+### Counterfactuals — "what would change my mind"
+Two kinds:
+- **Programmatic**: simulate +30 on the weakest pillar; if the verdict changes, report it.
+- **LLM `mind_changers`**: falsifiable observable signals — *"if X shows up in N months, my assessment changes."*
 
-## Arquitectura
+## Architecture
 
 ```
 oss_auditor/
 ├── cli.py                      # `oss-audit` (ACLI-compliant)
-├── pipeline.py                 # Orquestador end-to-end
-├── ingestion.py                # Clone/local + detección de lenguajes + clasificador
+├── pipeline.py                 # End-to-end orchestrator
+├── ingestion.py                # Clone/local + language detection + classifier
 ├── models.py                   # Pydantic schemas
 ├── technical/
-│   ├── runner.py               # Score técnico
-│   ├── universal.py            # Secretos, CI, tests, fuzz, property, licencia
+│   ├── runner.py               # Technical score
+│   ├── universal.py            # Secrets, CI, tests, fuzz, property, license
 │   ├── composability.py        # CLI / library / MCP / HTTP / workspace
 │   └── lang_runners.py         # cargo, ruff, npm, govulncheck, ...
 ├── business/
-│   ├── context_builder.py      # Dossier rico (NO solo README)
+│   ├── context_builder.py      # Rich dossier (NOT just the README)
 │   ├── analyzer.py             # Prompt + JSON schema + parser
 │   └── backends.py             # Anthropic API / Claude SDK / OpenAI-compatible
 ├── community/
 │   ├── github_metrics.py       # Stars / forks / velocity / bus factor
 │   └── agent_readiness.py      # CLAUDE.md / AGENTS.md / .cli/ / mcp.json / ...
 ├── reporter/
-│   ├── scorer.py               # Score agregado (renormaliza pilares activos)
-│   ├── verdict.py              # 8 veredictos + counterfactuals programáticos
+│   ├── scorer.py               # Aggregate score (renormalizes active pillars)
+│   ├── verdict.py              # 8 verdicts + programmatic counterfactuals
 │   ├── badge.py                # Shields.io static / endpoint / markdown
-│   └── markdown.py             # Render de reportes
-├── storage/db.py               # SQLite local
-└── web.py                      # FastAPI para histórico
+│   └── markdown.py             # Report rendering
+├── storage/db.py               # Local SQLite
+└── web.py                      # FastAPI for history
 ```
 
 ## Roadmap
 
-- **v0.6 — Calibración con datos reales.** Ajustar umbrales y pesos contra ≥10 auditorías de proyectos diversos. Hasta entonces los thresholds del verdict son aproximaciones razonables, no verdad calibrada.
-- **v0.7 — Más backends + más lenguajes.** Bedrock, Vertex, Cohere; runners para Java / Kotlin / Swift.
-- **v0.8 — Comparación temporal.** Diff entre dos auditorías del mismo repo (¿mejoró? ¿se estancó?).
-- **v0.9 — Modo "monitor".** Auditar en CI cada PR; alertar cuando el verdict cambia.
+- **v0.6 — Calibration with real data.** Tune thresholds and weights against ≥10 audits of diverse projects. Until then the verdict thresholds are reasonable approximations, not calibrated truth.
+- **v0.7 — More backends + more languages.** Bedrock, Vertex, Cohere; runners for Java / Kotlin / Swift.
+- **v0.8 — Temporal comparison.** Diff between two audits of the same repo (did it improve? did it stall?).
+- **v0.9 — "Monitor" mode.** Audit each PR in CI; alert when the verdict changes.
 
-## Contribuir
+## Contributing
 
-Primer mejor primer PR: añadir un detector a `oss_auditor/community/agent_readiness.py` o `oss_auditor/technical/composability.py`. Son módulos auto-contenidos, fácil de testear.
+Best first PR: add a detector to `oss_auditor/community/agent_readiness.py` or `oss_auditor/technical/composability.py`. They're self-contained modules and easy to test.
 
 ```bash
 pip install -e .
@@ -211,11 +211,11 @@ python tests/smoke_test.py
 oss-audit audit . --skip-business --skip-community  # eat your own dogfood
 ```
 
-Issues bienvenidas para:
-- Falsos positivos / negativos en clasificación de tipo (`implementation` vs `proposal`).
-- Calibración de thresholds del verdict (40 / 70).
-- Repos donde el rubric da un veredicto que sentís claramente erróneo — esos son oro.
+Issues are welcome for:
+- False positives / negatives in artifact-type classification (`implementation` vs `proposal`).
+- Verdict threshold calibration (40 / 70).
+- Repos where the rubric returns a verdict that feels clearly wrong — those are gold.
 
-## Licencia
+## License
 
-[EUPL-1.2](LICENSE) — short-form notice según el Article 12 de la licencia.
+[EUPL-1.2](LICENSE) — short-form notice per Article 12 of the license.
