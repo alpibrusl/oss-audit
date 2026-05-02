@@ -42,18 +42,33 @@ def run_audit(source: str, skip_business: bool = False,
         if not skip_technical and not is_proposal:
             step(f"🔧 Análisis técnico ({meta.primary_language or 'multi-lang'})...")
             report.technical = audit_technical(meta, repo_path)
-        elif is_proposal:
-            step("🔧 Pilar técnico omitido para `proposal` (no es el artefacto).")
+            report.technical.data_status = (
+                "available" if report.technical.score > 0 else "unavailable"
+            )
+        else:
+            report.technical.data_status = "skipped"
+            if is_proposal:
+                step("🔧 Pilar técnico omitido para `proposal` (no es el artefacto).")
 
         if not skip_business:
             step("💼 Construyendo contexto de negocio...")
             ctx = build_business_context(meta, repo_path)
             step(f"💼 Análisis de negocio con Claude ({ctx.get('_token_estimate', 0):,} tokens)...")
             report.business = analyze_business(ctx)
+            report.business.data_status = (
+                "available" if report.business.score > 0 else "unavailable"
+            )
+        else:
+            report.business.data_status = "skipped"
 
         if not skip_community:
             step("👥 Métricas de comunidad (GitHub API + agent-readiness)...")
             report.community = audit_community(meta, repo_path)
+            report.community.data_status = (
+                "available" if report.community.score > 0 else "unavailable"
+            )
+        else:
+            report.community.data_status = "skipped"
 
         step("📊 Cálculo de score y recomendaciones...")
         overall, grade = compute_overall(report)

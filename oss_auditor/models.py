@@ -33,9 +33,13 @@ class Finding(BaseModel):
     recommendation: str | None = None
 
 
+DataStatus = Literal["available", "skipped", "unavailable"]
+
+
 class TechnicalReport(BaseModel):
     """Resultado del pilar técnico."""
     score: float = 0.0  # 0-100
+    data_status: DataStatus = "unavailable"
     test_coverage: float | None = None
     has_ci: bool = False
     has_tests: bool = False
@@ -56,6 +60,7 @@ class TechnicalReport(BaseModel):
 class BusinessReport(BaseModel):
     """Resultado del pilar de negocio (LLM-driven)."""
     score: float = 0.0
+    data_status: DataStatus = "unavailable"
     problem_clarity: float = 0.0
     execution_vs_ambition: float = 0.0
     differentiation: float = 0.0
@@ -80,6 +85,7 @@ class BusinessReport(BaseModel):
 class CommunityReport(BaseModel):
     """Resultado del pilar de comunidad."""
     score: float = 0.0
+    data_status: DataStatus = "unavailable"
     stars: int = 0
     forks: int = 0
     open_issues: int = 0

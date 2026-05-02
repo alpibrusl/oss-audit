@@ -104,6 +104,12 @@ _DEFAULT = (
     "Sin señales suficientes en ningún eje. Pasar.",
 )
 
+_INDETERMINATE = (
+    "indeterminate", "Indeterminate",
+    "Faltan datos en al menos 2 de los 3 ejes (idea / ejecución / "
+    "relevancia). Veredicto suspendido hasta tener más señal.",
+)
+
 
 ACTIONS_TEMPLATE: dict[str, dict[str, str]] = {
     "bet-on-it": {
@@ -146,7 +152,31 @@ ACTIONS_TEMPLATE: dict[str, dict[str, str]] = {
         "cto": "Pass.",
         "investor": "Pass.",
     },
+    "indeterminate": {
+        "developer": "Datos insuficientes. Re-audita con todos los pilares activos.",
+        "cto": "No hay base para decidir adopción. Requiere análisis completo.",
+        "investor": "Sin tesis articulable. Cierra los gaps de datos antes de evaluar.",
+    },
 }
+
+
+def _axes_with_data(report: AuditReport) -> dict[str, bool]:
+    """¿Qué ejes del verdict tienen datos reales detrás?
+
+    - idea: requiere el pilar de negocio (problem_clarity, differentiation,
+      intellectual_contribution).
+    - execution: el técnico (implementation) o negocio+comunidad (proposal).
+    - relevance: requiere comunidad (señal primaria de demanda).
+    """
+    biz_ok = report.business.data_status == "available"
+    tech_ok = report.technical.data_status == "available"
+    com_ok = report.community.data_status == "available"
+    is_proposal = report.repo.repo_type == "proposal"
+    return {
+        "idea": biz_ok,
+        "execution": (biz_ok and com_ok) if is_proposal else tech_ok,
+        "relevance": com_ok,
+    }
 
 
 def compute_verdict(report: AuditReport) -> Verdict:
@@ -154,16 +184,26 @@ def compute_verdict(report: AuditReport) -> Verdict:
     execution = _execution_score(report)
     relevance = _relevance_score(report)
 
-    bands = (_band(idea), _band(execution), _band(relevance))
-    code, label, one_liner = VERDICTS.get(bands, _DEFAULT)
+    axes = _axes_with_data(report)
+    bands = {
+        "idea": _band(idea) if axes["idea"] else "n/a",
+        "execution": _band(execution) if axes["execution"] else "n/a",
+        "relevance": _band(relevance) if axes["relevance"] else "n/a",
+    }
+
+    if sum(axes.values()) < 2:
+        code, label, one_liner = _INDETERMINATE
+    else:
+        key = (bands["idea"], bands["execution"], bands["relevance"])
+        code, label, one_liner = VERDICTS.get(key, _DEFAULT)
 
     return Verdict(
         code=code,
         label=label,
         one_liner=one_liner,
-        idea_band=bands[0],
-        execution_band=bands[1],
-        relevance_band=bands[2],
+        idea_band=bands["idea"],
+        execution_band=bands["execution"],
+        relevance_band=bands["relevance"],
         actions=dict(ACTIONS_TEMPLATE.get(code, ACTIONS_TEMPLATE["pass"])),
     )
 
@@ -186,17 +226,21 @@ def compute_counterfactuals(report: AuditReport) -> list[str]:
         return out  # nada que mejorar dramáticamente
 
     target = min(weakest[1] + 30, 100)
-    # Construir un report hipotético
+    # Construir un report hipotético. El pilar mejorado también pasa a
+    # estar `available` — un score más alto sin datos detrás no es
+    # reportable como counterfactual.
     cloned = report.model_copy(deep=True)
     if weakest[0] == "technical":
         cloned.technical.score = target
+        cloned.technical.data_status = "available"
     elif weakest[0] == "business":
         cloned.business.score = target
-        # Reflejar en sub-scores que alimentan al verdict
         cloned.business.problem_clarity = max(cloned.business.problem_clarity, 70)
         cloned.business.differentiation = max(cloned.business.differentiation, 70)
+        cloned.business.data_status = "available"
     else:
         cloned.community.score = target
+        cloned.community.data_status = "available"
 
     new_verdict = compute_verdict(cloned)
     if new_verdict.code != current.code:
