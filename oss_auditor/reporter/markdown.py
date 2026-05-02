@@ -95,6 +95,8 @@ def render_markdown(report: AuditReport) -> str:
     lines.append("")
     b = r.business
     lines.append(f"**Score:** {b.score:.1f}/100")
+    if b.backend or b.model:
+        lines.append(f"**Backend LLM:** `{b.backend or 'n/a'}` &middot; **Modelo:** `{b.model or 'n/a'}`")
     lines.append("")
     if b.summary:
         lines.append(f"> {b.summary}")
@@ -165,5 +167,5 @@ def render_markdown(report: AuditReport) -> str:
         lines.append("")
 
     lines.append("---")
-    lines.append(f"_Generado por OSS Auditor v0.2.0_")
+    lines.append(f"_Generado por OSS Auditor v0.3.0_")
     return "\n".join(lines)

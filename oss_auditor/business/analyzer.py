@@ -3,19 +3,46 @@
 El prompt está diseñado para producir output estructurado (JSON) y para
 forzar al modelo a basar cada juicio en evidencia del repo, no en
 suposiciones genéricas.
+
+El backend LLM es intercambiable (ver `backends.py`): API key directa de
+Anthropic, CLI de Claude Code (suscripción), u OpenAI-compatible.
 """
 from __future__ import annotations
 
 import json
-import os
 import re
 from typing import Any
 
-from anthropic import Anthropic
-
 from ..models import BusinessReport
+from .backends import select_backend
 
-CLAUDE_MODEL = os.environ.get("OSS_AUDITOR_MODEL", "claude-opus-4-7")
+# Schema para forzar output estructurado en backends que lo soporten
+# (Claude CLI con --json-schema, OpenAI con response_format).
+ANALYSIS_SCHEMA: dict = {
+    "type": "object",
+    "properties": {
+        "scores": {
+            "type": "object",
+            "properties": {
+                "problem_clarity": {"type": "number"},
+                "execution_vs_ambition": {"type": "number"},
+                "differentiation": {"type": "number"},
+                "market_signals": {"type": "number"},
+                "viability_risks": {"type": "number"},
+            },
+            "required": [
+                "problem_clarity", "execution_vs_ambition",
+                "differentiation", "market_signals", "viability_risks",
+            ],
+        },
+        "summary": {"type": "string"},
+        "strengths": {"type": "array", "items": {"type": "string"}},
+        "weaknesses": {"type": "array", "items": {"type": "string"}},
+        "opportunities": {"type": "array", "items": {"type": "string"}},
+        "risks": {"type": "array"},
+    },
+    "required": ["scores", "summary"],
+}
 
 SYSTEM_PROMPT = """Eres un analista senior que evalúa proyectos open-source con la lente de un \
 inversor técnico (operator-VC). Tu trabajo es producir juicios HONESTOS basados en EVIDENCIA \
@@ -30,7 +57,14 @@ REGLAS:
    teniendo un score de tracción bajo — eso es honesto, no negativo.
 4. Identifica el RIESGO REAL, no solo lo positivo. Si el proyecto compite con incumbents bien \
    financiados, dilo. Si la tesis es difícil de defender, dilo.
-5. Output debe ser JSON válido con la estructura exacta especificada. Nada de texto fuera del JSON.
+
+FORMATO DE OUTPUT (CRÍTICO):
+- Tu respuesta DEBE empezar con `{` y terminar con `}`.
+- NO escribas prosa antes ni después del JSON.
+- NO uses code fences (```json).
+- NO digas "Aquí está el análisis" ni "He completado el análisis".
+- El primer carácter de tu output es `{`.
+- Si no puedes producir JSON válido, devuelve `{"error": "razón breve"}`.
 """
 
 USER_PROMPT_TEMPLATE = """Analiza el siguiente proyecto open-source y devuelve un análisis \
@@ -179,27 +213,64 @@ def _format_issues(issues: list[dict]) -> str:
 
 
 def _extract_json(text: str) -> dict[str, Any]:
-    """Extrae el primer bloque JSON válido del texto."""
-    # quitar fences ```json ... ```
+    """Extrae el primer objeto JSON válido del texto.
+
+    Modelos conversacionales (incl. Claude CLI en modo agente) a veces
+    envuelven la respuesta en prosa o code fences. Estrategias en orden:
+      1. Buscar bloques ```json ... ``` o ``` ... ```.
+      2. Buscar el primer { ... } balanceado.
+      3. Fallback: primer { hasta último }.
+    """
     text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\s*", "", text)
-        text = re.sub(r"\s*```\s*$", "", text)
-    # encontrar primer { y último }
-    start = text.find("{")
-    end = text.rfind("}")
-    if start == -1 or end == -1 or end <= start:
-        raise ValueError(f"No se encontró JSON en la respuesta. Inicio: {text[:200]}")
-    return json.loads(text[start:end + 1])
+
+    # 1. fenced code blocks
+    fence_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+    if fence_match:
+        try:
+            return json.loads(fence_match.group(1))
+        except json.JSONDecodeError:
+            pass
+
+    # 2. balanced braces (handles nested JSON inside prose)
+    depth = 0
+    start_idx: int | None = None
+    for i, ch in enumerate(text):
+        if ch == "{":
+            if depth == 0:
+                start_idx = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and start_idx is not None:
+                candidate = text[start_idx : i + 1]
+                try:
+                    return json.loads(candidate)
+                except json.JSONDecodeError:
+                    start_idx = None
+
+    # 3. naive fallback
+    s = text.find("{")
+    e = text.rfind("}")
+    if s != -1 and e > s:
+        try:
+            return json.loads(text[s : e + 1])
+        except json.JSONDecodeError:
+            pass
+
+    raise ValueError(f"No se encontró JSON en la respuesta. Inicio: {text[:200]}")
 
 
 def analyze_business(context: dict[str, Any]) -> BusinessReport:
-    """Llama a Claude con el contexto del proyecto y devuelve un BusinessReport."""
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
+    """Llama al backend LLM con el contexto del proyecto y devuelve un BusinessReport."""
+    backend = select_backend()
+    if backend is None:
         return BusinessReport(
             score=0.0,
-            summary="ANTHROPIC_API_KEY no configurada — análisis de negocio omitido.",
+            summary=(
+                "Sin backend LLM disponible. Configura una de: ANTHROPIC_API_KEY, "
+                "OPENAI_API_KEY, o instala el CLI `claude` (Claude Code) para usar "
+                "tu suscripción Pro/Max."
+            ),
             raw_analysis="",
         )
 
@@ -213,22 +284,29 @@ def analyze_business(context: dict[str, Any]) -> BusinessReport:
         issues_section=_format_issues(context["recent_issues"]),
     )
 
-    client = Anthropic(api_key=api_key)
-    response = client.messages.create(
-        model=CLAUDE_MODEL,
-        max_tokens=4000,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_prompt}],
-    )
-    raw_text = "".join(b.text for b in response.content if hasattr(b, "text"))
+    try:
+        raw_text, used_model = backend.complete(
+            system=SYSTEM_PROMPT, user=user_prompt, max_tokens=4000,
+            json_schema=ANALYSIS_SCHEMA,
+        )
+    except Exception as e:  # noqa: BLE001
+        return BusinessReport(
+            score=0.0,
+            summary=f"Error llamando al backend `{backend.name}`: {e}",
+            raw_analysis="",
+            backend=backend.name,
+            model=backend.model,
+        )
 
     try:
         parsed = _extract_json(raw_text)
     except (ValueError, json.JSONDecodeError) as e:
         return BusinessReport(
             score=0.0,
-            summary=f"Error parseando respuesta del LLM: {e}",
+            summary=f"Error parseando respuesta del LLM ({backend.name}/{used_model}): {e}",
             raw_analysis=raw_text,
+            backend=backend.name,
+            model=used_model,
         )
 
     scores = parsed.get("scores", {})
@@ -258,4 +336,6 @@ def analyze_business(context: dict[str, Any]) -> BusinessReport:
         weaknesses=weaknesses,
         opportunities=parsed.get("opportunities", []),
         raw_analysis=json.dumps(parsed, indent=2, ensure_ascii=False),
+        backend=backend.name,
+        model=used_model,
     )
