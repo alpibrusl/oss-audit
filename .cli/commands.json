@@ -1,0 +1,240 @@
+{
+  "name": "oss-audit",
+  "version": "0.1.0",
+  "acli_version": "0.1.0",
+  "commands": [
+    {
+      "name": "introspect",
+      "description": "Output the full command tree as JSON for agent consumption.",
+      "arguments": [],
+      "options": [
+        {
+          "name": "acli_version",
+          "type": "bool",
+          "description": "Show only the ACLI spec version. type:bool",
+          "default": false
+        },
+        {
+          "name": "output",
+          "type": "OutputFormat",
+          "description": "Output format. type:enum[text|json|table]",
+          "default": "json"
+        }
+      ],
+      "subcommands": []
+    },
+    {
+      "name": "version",
+      "description": "Show version information.",
+      "arguments": [],
+      "options": [
+        {
+          "name": "output",
+          "type": "OutputFormat",
+          "description": "Output format. type:enum[text|json|table]",
+          "default": "text"
+        }
+      ],
+      "subcommands": []
+    },
+    {
+      "name": "skill",
+      "description": "Generate a SKILL.md (agentskills.io) file for agent bootstrapping.",
+      "arguments": [],
+      "options": [
+        {
+          "name": "out",
+          "type": "string",
+          "description": "Write skill file to this path instead of stdout. type:path",
+          "default": ""
+        },
+        {
+          "name": "output",
+          "type": "OutputFormat",
+          "description": "Output format. type:enum[text|json|table]",
+          "default": "text"
+        }
+      ],
+      "subcommands": []
+    },
+    {
+      "name": "audit",
+      "description": "Audita un repositorio open-source (t\u00e9cnico + negocio + comunidad).",
+      "arguments": [
+        {
+          "name": "source",
+          "type": "string",
+          "required": true,
+          "description": "GitHub URL or local path. type:string"
+        }
+      ],
+      "options": [
+        {
+          "name": "out_file",
+          "type": "pathlib.Path | None",
+          "description": "Save the rendered report to a .md or .json file. type:path",
+          "default": null
+        },
+        {
+          "name": "skip_business",
+          "type": "bool",
+          "description": "Skip LLM business analysis. type:bool",
+          "default": false
+        },
+        {
+          "name": "skip_community",
+          "type": "bool",
+          "description": "Skip GitHub community metrics. type:bool",
+          "default": false
+        },
+        {
+          "name": "skip_technical",
+          "type": "bool",
+          "description": "Skip technical pillar. type:bool",
+          "default": false
+        },
+        {
+          "name": "save",
+          "type": "bool",
+          "description": "Persist to local SQLite DB. type:bool",
+          "default": true
+        },
+        {
+          "name": "output",
+          "type": "OutputFormat",
+          "description": "Output format. type:enum[text|json|table]",
+          "default": "text"
+        }
+      ],
+      "subcommands": [],
+      "idempotent": true,
+      "examples": [
+        {
+          "description": "Audit a remote GitHub repo",
+          "invocation": "oss-audit audit https://github.com/alpibrusl/lex-lang"
+        },
+        {
+          "description": "Audit a local repo, technical pillar only",
+          "invocation": "oss-audit audit . --skip-business --skip-community"
+        },
+        {
+          "description": "Get a structured envelope for an agent",
+          "invocation": "oss-audit audit . --skip-business --skip-community --output json"
+        }
+      ],
+      "see_also": [
+        "list",
+        "show",
+        "serve"
+      ]
+    },
+    {
+      "name": "list",
+      "description": "Lista las auditor\u00edas guardadas.",
+      "arguments": [],
+      "options": [
+        {
+          "name": "limit",
+          "type": "int",
+          "description": "Max audits to return. type:int",
+          "default": 20
+        },
+        {
+          "name": "output",
+          "type": "OutputFormat",
+          "description": "Output format. type:enum[text|json|table]",
+          "default": "text"
+        }
+      ],
+      "subcommands": [],
+      "idempotent": true,
+      "examples": [
+        {
+          "description": "List the latest 20 audits",
+          "invocation": "oss-audit list"
+        },
+        {
+          "description": "List 50 audits as JSON for an agent",
+          "invocation": "oss-audit list -n 50 --output json"
+        }
+      ],
+      "see_also": [
+        "audit",
+        "show"
+      ]
+    },
+    {
+      "name": "show",
+      "description": "Muestra una auditor\u00eda guardada.",
+      "arguments": [
+        {
+          "name": "audit_id",
+          "type": "int",
+          "required": true,
+          "description": "Audit ID from `oss-audit list`. type:int"
+        }
+      ],
+      "options": [
+        {
+          "name": "output",
+          "type": "OutputFormat",
+          "description": "Output format. type:enum[text|json|table]",
+          "default": "text"
+        }
+      ],
+      "subcommands": [],
+      "idempotent": true,
+      "examples": [
+        {
+          "description": "Show audit #1 as markdown",
+          "invocation": "oss-audit show 1"
+        },
+        {
+          "description": "Get the full audit envelope as JSON",
+          "invocation": "oss-audit show 1 --output json"
+        }
+      ],
+      "see_also": [
+        "list",
+        "audit"
+      ]
+    },
+    {
+      "name": "serve",
+      "description": "Lanza la web local para navegar el hist\u00f3rico de auditor\u00edas.",
+      "arguments": [],
+      "options": [
+        {
+          "name": "host",
+          "type": "string",
+          "description": "Bind address. type:string",
+          "default": "127.0.0.1"
+        },
+        {
+          "name": "port",
+          "type": "int",
+          "description": "Bind port. type:int",
+          "default": 8765
+        },
+        {
+          "name": "output",
+          "type": "string",
+          "description": "Output format. type:enum[text|json|table]",
+          "default": "text"
+        }
+      ],
+      "subcommands": [],
+      "idempotent": true,
+      "examples": [
+        {
+          "description": "Serve on default port",
+          "invocation": "oss-audit serve"
+        },
+        {
+          "description": "Serve on a custom host:port",
+          "invocation": "oss-audit serve --host 0.0.0.0 --port 9000"
+        }
+      ]
+    }
+  ]
+}
