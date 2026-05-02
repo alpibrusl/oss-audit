@@ -45,8 +45,8 @@ def run_audit(source: str, skip_business: bool = False,
             report.business = analyze_business(ctx)
 
         if not skip_community:
-            step("👥 Métricas de comunidad (GitHub API)...")
-            report.community = audit_community(meta)
+            step("👥 Métricas de comunidad (GitHub API + agent-readiness)...")
+            report.community = audit_community(meta, repo_path)
 
         step("📊 Cálculo de score y recomendaciones...")
         overall, grade = compute_overall(report)
