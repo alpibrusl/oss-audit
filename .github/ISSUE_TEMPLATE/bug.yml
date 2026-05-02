@@ -1,0 +1,44 @@
+name: Bug report
+description: Algo crashea, devuelve datos malos, o se comporta distinto a lo documentado.
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Versión de OSS Auditor
+      placeholder: 0.5.0
+    validations:
+      required: true
+
+  - type: input
+    id: command
+    attributes:
+      label: Comando que ejecutaste
+      placeholder: oss-audit audit https://github.com/foo/bar --output json
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Qué esperabas
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Qué pasó
+      description: Stack trace completo si aplica. Si es un campo con valor erróneo, indicá nombre y valor.
+    validations:
+      required: true
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Entorno
+      description: OS, versión Python, backend LLM (si aplica), tools opcionales presentes (`gitleaks`, `cargo`, `ruff`, etc.).
+      placeholder: |
+        Ubuntu 24.04 / Python 3.12 / claude-agent-sdk / cargo + ruff
+    validations:
+      required: false

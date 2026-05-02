@@ -1,0 +1,68 @@
+name: False verdict report
+description: Auditaste un repo y el veredicto te parece claramente erróneo. ESTA ES LA ISSUE MÁS VALIOSA AHORA MISMO — guía la calibración v0.6.
+labels: ["false-verdict", "calibration"]
+body:
+  - type: input
+    id: repo
+    attributes:
+      label: Repo auditado
+      description: URL del repo (GitHub, gist, etc.).
+      placeholder: https://github.com/owner/repo
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Versión de OSS Auditor
+      description: "`oss-audit --help` o el `__version__` del paquete."
+      placeholder: 0.5.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: given_verdict
+    attributes:
+      label: Veredicto que dio OSS Auditor
+      options:
+        - bet-on-it
+        - worth-helping
+        - promising-prototype
+        - ahead-of-its-time
+        - solid-commodity
+        - skill-in-search
+        - incomplete-thesis
+        - pass
+    validations:
+      required: true
+
+  - type: dropdown
+    id: expected_verdict
+    attributes:
+      label: Veredicto que crees correcto
+      options:
+        - bet-on-it
+        - worth-helping
+        - promising-prototype
+        - ahead-of-its-time
+        - solid-commodity
+        - skill-in-search
+        - incomplete-thesis
+        - pass
+    validations:
+      required: true
+
+  - type: textarea
+    id: reasoning
+    attributes:
+      label: Por qué el veredicto que dio te parece erróneo
+      description: Sé concreto. Cita evidencia del repo (commits, README, issues, prior art conocido).
+    validations:
+      required: true
+
+  - type: textarea
+    id: report
+    attributes:
+      label: Reporte completo (opcional)
+      description: Pegá aquí el output de `oss-audit audit <url> --output json` para que podamos analizar qué señales activaron el verdict.
+      render: json
