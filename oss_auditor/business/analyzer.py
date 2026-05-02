@@ -1,11 +1,11 @@
-"""Análisis de negocio impulsado por LLM.
+"""LLM-driven business analysis.
 
-El prompt está diseñado para producir output estructurado (JSON) y para
-forzar al modelo a basar cada juicio en evidencia del repo, no en
-suposiciones genéricas.
+The prompt is designed to produce structured JSON output and to force
+the model to base every judgment on evidence from the repo, not on
+generic assumptions.
 
-El backend LLM es intercambiable (ver `backends.py`): API key directa de
-Anthropic, CLI de Claude Code (suscripción), u OpenAI-compatible.
+The LLM backend is pluggable (see `backends.py`): direct Anthropic
+API key, Claude Code CLI (subscription), or OpenAI-compatible.
 """
 from __future__ import annotations
 
@@ -16,8 +16,8 @@ from typing import Any
 from ..models import BusinessReport
 from .backends import select_backend
 
-# Schema para forzar output estructurado en backends que lo soporten
-# (Claude CLI con --json-schema, OpenAI con response_format).
+# Schema to force structured output on backends that support it
+# (Claude CLI with --json-schema, OpenAI with response_format).
 ANALYSIS_SCHEMA: dict = {
     "type": "object",
     "properties": {
@@ -51,66 +51,66 @@ ANALYSIS_SCHEMA: dict = {
     "required": ["scores", "summary"],
 }
 
-SYSTEM_PROMPT = """Eres un analista senior que evalúa proyectos open-source con la lente de un \
-inversor técnico (operator-VC). Tu trabajo es producir juicios HONESTOS basados en EVIDENCIA \
-extraída del repositorio, no en marketing del README.
+SYSTEM_PROMPT = """You are a senior analyst evaluating open-source projects through the lens of a \
+technical investor (operator-VC). Your job is to produce HONEST judgments based on EVIDENCE \
+extracted from the repository, not on the README's marketing.
 
-REGLAS:
-1. Cada afirmación que hagas debe estar respaldada por evidencia concreta del contexto que recibes \
-   (un archivo, un commit, una línea de código, una issue). Si no hay evidencia, dilo.
-2. Distingue entre AMBICIÓN DECLARADA (lo que dice el README) y EJECUCIÓN OBSERVABLE (lo que el \
-   código y los commits muestran). El gap entre ambas es la señal más importante.
-3. No infles scores por simpatía. Un proyecto en fase temprana puede ser brillante pero seguir \
-   teniendo un score de tracción bajo — eso es honesto, no negativo.
-4. Identifica el RIESGO REAL, no solo lo positivo. Si el proyecto compite con incumbents bien \
-   financiados, dilo. Si la tesis es difícil de defender, dilo.
+RULES:
+1. Every claim you make must be backed by concrete evidence from the context you receive \
+   (a file, a commit, a line of code, an issue). If there's no evidence, say so.
+2. Distinguish between DECLARED AMBITION (what the README says) and OBSERVABLE EXECUTION \
+   (what the code and commits show). The gap between the two is the most important signal.
+3. Don't inflate scores out of sympathy. An early-stage project may be brilliant and still \
+   carry a low traction score — that's honest, not negative.
+4. Identify the REAL risk, not just the positives. If the project competes with well-funded \
+   incumbents, say so. If the thesis is hard to defend, say so.
 
-FORMATO DE OUTPUT (CRÍTICO):
-- Tu respuesta DEBE empezar con `{` y terminar con `}`.
-- NO escribas prosa antes ni después del JSON.
-- NO uses code fences (```json).
-- NO digas "Aquí está el análisis" ni "He completado el análisis".
-- El primer carácter de tu output es `{`.
-- Si no puedes producir JSON válido, devuelve `{"error": "razón breve"}`.
+OUTPUT FORMAT (CRITICAL):
+- Your response MUST start with `{` and end with `}`.
+- Do NOT write prose before or after the JSON.
+- Do NOT use code fences (```json).
+- Do NOT say "Here's the analysis" or "I've completed the analysis".
+- The first character of your output is `{`.
+- If you can't produce valid JSON, return `{"error": "brief reason"}`.
 """
 
-USER_PROMPT_TEMPLATE = """Analiza el siguiente proyecto open-source y devuelve un análisis \
-estructurado en JSON.
+USER_PROMPT_TEMPLATE = """Analyze the following open-source project and return a structured \
+analysis as JSON.
 
-# Contexto del proyecto
+# Project context
 
 ## Metadata
 {meta}
 
-## Estructura
+## Structure
 ```
 {structure}
 ```
 
-## Documentación
+## Documentation
 {docs_section}
 
-## Manifests (deps y configuración)
+## Manifests (deps and configuration)
 {manifests_section}
 
-## Muestras de código
+## Code samples
 {code_section}
 
-## Commits recientes
+## Recent commits
 {commits_section}
 
-## Issues recientes
+## Recent issues
 {issues_section}
 
 ---
 
-# Tu tarea
+# Your task
 
-Este es el pilar de **Tesis & Innovación**. No solo evalúas ejecución; evalúas \
-qué tan **nueva** y **defensible** es la idea, qué priors existen, y qué haría un \
-developer / CTO / inversor con esta información.
+This is the **Thesis & Innovation** pillar. You're not just evaluating execution; \
+you're evaluating how **new** and **defensible** the idea is, what priors exist, and what \
+a developer / CTO / investor would do with this information.
 
-Devuelve **solo JSON válido** con esta estructura exacta:
+Return **valid JSON only** with this exact structure:
 
 ```json
 {{
@@ -122,62 +122,63 @@ Devuelve **solo JSON válido** con esta estructura exacta:
     "viability_risks": <0-100>,
     "intellectual_contribution": <0-100>
   }},
-  "summary": "<2-3 frases que capturen la esencia del proyecto y su estado real>",
-  "novelty_summary": "<1-2 frases: qué primitive/abstracción/técnica es nueva aquí, si hay alguna>",
-  "nearest_prior_art": ["<proyecto/paper más cercano 1>", "<2>", "<3 si aplica>"],
-  "strengths": ["<fortaleza concreta 1>", "<fortaleza 2>"],
-  "weaknesses": ["<debilidad concreta 1>", "<debilidad 2>"],
-  "opportunities": ["<oportunidad 1>", "<oportunidad 2>"],
+  "summary": "<2-3 sentences capturing the essence of the project and its real state>",
+  "novelty_summary": "<1-2 sentences: what primitive/abstraction/technique is new here, if any>",
+  "nearest_prior_art": ["<closest project/paper 1>", "<2>", "<3 if applicable>"],
+  "strengths": ["<concrete strength 1>", "<strength 2>"],
+  "weaknesses": ["<concrete weakness 1>", "<weakness 2>"],
+  "opportunities": ["<opportunity 1>", "<opportunity 2>"],
   "risks": [
-    {{"risk": "<riesgo>", "severity": "low|medium|high", "evidence": "<base>"}}
+    {{"risk": "<risk>", "severity": "low|medium|high", "evidence": "<basis>"}}
   ],
-  "developer_view": "<3 frases: ¿lo uso en prod? ¿contribuyo? ¿aprendo de él?>",
-  "cto_view": "<3 frases: ¿adopto / pilotear / esperar / pasar? stack risk. equipo hireable?>",
-  "investor_view": "<3 frases: ¿fundable? stage match. riesgo principal: técnico / mercado / equipo>",
+  "developer_view": "<3 sentences: do I use it in prod? do I contribute? do I learn from it?>",
+  "cto_view": "<3 sentences: adopt / pilot / wait / pass? stack risk. hireable team?>",
+  "investor_view": "<3 sentences: fundable? stage match. main risk: technical / market / team>",
   "mind_changers": [
-    "<señal observable que, de aparecer, cambiaría tu evaluación; e.g. '5 contribuidores externos en 6 meses'>",
-    "<otra señal>",
-    "<otra señal>"
+    "<observable signal that, if it appeared, would change your assessment; e.g. '5 external contributors in 6 months'>",
+    "<another signal>",
+    "<another signal>"
   ]
 }}
 ```
 
-# Rúbrica para los scores (0-100)
+# Rubric for the scores (0-100)
 
-- **problem_clarity**: ¿El problema es nítido y específico? 90+ = "Resuelve X para Y, evidencia clara". \
-  50-70 = "Idea presente pero difusa". <50 = "No está claro qué problema resuelve".
+- **problem_clarity**: Is the problem sharp and specific? 90+ = "Solves X for Y, clear evidence". \
+  50-70 = "Idea present but fuzzy". <50 = "Not clear what problem it solves".
 
-- **execution_vs_ambition**: ¿La ejecución observable matchea la ambición declarada? 90+ = código \
-  refleja el README y va más allá. 50 = ambición alta, ejecución parcial. <30 = mucho marketing, \
-  poco código que lo respalde.
+- **execution_vs_ambition**: Does observable execution match declared ambition? 90+ = code \
+  reflects the README and goes beyond. 50 = high ambition, partial execution. <30 = lots of \
+  marketing, little code to back it up.
 
-- **differentiation**: ¿Hay algo defensible? 90+ = enfoque/algoritmo único con barrera real. \
-  50 = diferencias menores. <30 = me-too de algo existente.
+- **differentiation**: Is there anything defensible? 90+ = unique approach/algorithm with a real \
+  moat. 50 = minor differences. <30 = me-too of something that already exists.
 
-- **market_signals**: ¿Hay evidencia de demanda? 90+ = adopción visible, issues con casos reales, \
-  empresas usándolo. 30-50 = nicho identificado pero sin tracción aún. <30 = solo el autor lo usa.
+- **market_signals**: Is there evidence of demand? 90+ = visible adoption, issues with real use \
+  cases, companies using it. 30-50 = niche identified but no traction yet. <30 = only the author \
+  uses it.
 
-- **intellectual_contribution**: ¿Qué tanto avanza este proyecto el state-of-the-art? 90+ = primitive \
-  o abstracción genuinamente nueva, citable como prior art futura. 50 = combinación útil de ideas \
-  existentes. <30 = aplicación directa de patterns conocidos.
+- **intellectual_contribution**: How much does this project advance the state of the art? 90+ = \
+  primitive or abstraction that's genuinely new, citable as future prior art. 50 = useful \
+  combination of existing ideas. <30 = direct application of known patterns.
 
-- **viability_risks**: ¿Qué tan viable es a 12-24 meses? Evalúa riesgos: complejidad técnica, \
-  competencia, dependencia de un solo autor, modelo de monetización ausente, etc. 90+ = pocos \
-  riesgos claros. <30 = riesgos de muerte temprana.
+- **viability_risks**: How viable at 12-24 months? Evaluate risks: technical complexity, \
+  competition, single-author dependency, missing monetization model, etc. 90+ = few clear \
+  risks. <30 = early-death risks.
 
-Recuerda: SOLO JSON, sin texto adicional.
+Remember: JSON ONLY, no extra text.
 """
 
 
 def _truncate(s: str, max_chars: int) -> str:
     if len(s) <= max_chars:
         return s
-    return s[:max_chars] + f"\n... [truncado a {max_chars} caracteres]"
+    return s[:max_chars] + f"\n... [truncated to {max_chars} characters]"
 
 
 def _format_docs(docs: dict[str, str]) -> str:
     if not docs:
-        return "(sin documentación detectada)"
+        return "(no documentation detected)"
     parts = []
     for name, content in docs.items():
         parts.append(f"### {name}\n```\n{_truncate(content, 8000)}\n```")
@@ -186,7 +187,7 @@ def _format_docs(docs: dict[str, str]) -> str:
 
 def _format_manifests(manifests: dict[str, str]) -> str:
     if not manifests:
-        return "(sin manifests)"
+        return "(no manifests)"
     parts = []
     for name, content in manifests.items():
         parts.append(f"### {name}\n```\n{_truncate(content, 4000)}\n```")
@@ -195,7 +196,7 @@ def _format_manifests(manifests: dict[str, str]) -> str:
 
 def _format_code(samples: dict[str, str]) -> str:
     if not samples:
-        return "(sin muestras de código)"
+        return "(no code samples)"
     parts = []
     for name, content in samples.items():
         parts.append(f"### {name}\n```\n{_truncate(content, 5000)}\n```")
@@ -204,14 +205,14 @@ def _format_code(samples: dict[str, str]) -> str:
 
 def _format_commits(commits: list[dict]) -> str:
     if not commits:
-        return "(sin commits accesibles)"
+        return "(no commits accessible)"
     return "\n".join(f"- {c.get('sha', '?')} ({c.get('date', '?')[:10]}): {c.get('message', '')}"
                      for c in commits)
 
 
 def _format_issues(issues: list[dict]) -> str:
     if not issues:
-        return "(sin issues accesibles)"
+        return "(no issues accessible)"
     parts = []
     for i in issues:
         parts.append(f"- #{i.get('number')} [{i.get('state')}] {i.get('title')} "
@@ -220,13 +221,13 @@ def _format_issues(issues: list[dict]) -> str:
 
 
 def _extract_json(text: str) -> dict[str, Any]:
-    """Extrae el primer objeto JSON válido del texto.
+    """Extract the first valid JSON object from the text.
 
-    Modelos conversacionales (incl. Claude CLI en modo agente) a veces
-    envuelven la respuesta en prosa o code fences. Estrategias en orden:
-      1. Buscar bloques ```json ... ``` o ``` ... ```.
-      2. Buscar el primer { ... } balanceado.
-      3. Fallback: primer { hasta último }.
+    Conversational models (incl. Claude CLI in agent mode) sometimes
+    wrap the response in prose or code fences. Strategies in order:
+      1. Look for ```json ... ``` or ``` ... ``` blocks.
+      2. Find the first balanced { ... }.
+      3. Fallback: first { up to last }.
     """
     text = text.strip()
 
@@ -264,19 +265,19 @@ def _extract_json(text: str) -> dict[str, Any]:
         except json.JSONDecodeError:
             pass
 
-    raise ValueError(f"No se encontró JSON en la respuesta. Inicio: {text[:200]}")
+    raise ValueError(f"No JSON found in the response. Start: {text[:200]}")
 
 
 def analyze_business(context: dict[str, Any]) -> BusinessReport:
-    """Llama al backend LLM con el contexto del proyecto y devuelve un BusinessReport."""
+    """Call the LLM backend with the project context and return a BusinessReport."""
     backend = select_backend()
     if backend is None:
         return BusinessReport(
             score=0.0,
             summary=(
-                "Sin backend LLM disponible. Configura una de: ANTHROPIC_API_KEY, "
-                "OPENAI_API_KEY, o instala el CLI `claude` (Claude Code) para usar "
-                "tu suscripción Pro/Max."
+                "No LLM backend available. Configure one of: ANTHROPIC_API_KEY, "
+                "OPENAI_API_KEY, or install the `claude` CLI (Claude Code) to use "
+                "your Pro/Max subscription."
             ),
             raw_analysis="",
         )
@@ -299,7 +300,7 @@ def analyze_business(context: dict[str, Any]) -> BusinessReport:
     except Exception as e:  # noqa: BLE001
         return BusinessReport(
             score=0.0,
-            summary=f"Error llamando al backend `{backend.name}`: {e}",
+            summary=f"Error calling backend `{backend.name}`: {e}",
             raw_analysis="",
             backend=backend.name,
             model=backend.model,
@@ -310,7 +311,7 @@ def analyze_business(context: dict[str, Any]) -> BusinessReport:
     except (ValueError, json.JSONDecodeError) as e:
         return BusinessReport(
             score=0.0,
-            summary=f"Error parseando respuesta del LLM ({backend.name}/{used_model}): {e}",
+            summary=f"Error parsing the LLM response ({backend.name}/{used_model}): {e}",
             raw_analysis=raw_text,
             backend=backend.name,
             model=used_model,
@@ -323,8 +324,8 @@ def analyze_business(context: dict[str, Any]) -> BusinessReport:
     ms = float(scores.get("market_signals", 0))
     vr = float(scores.get("viability_risks", 0))
     ic = float(scores.get("intellectual_contribution", 0))
-    # Fórmula v0.5: contribución intelectual entra al score con peso 15%,
-    # restamos de market_signals (de 15→10) para mantener total = 100%.
+    # v0.5 formula: intellectual_contribution enters the score at weight 15%;
+    # we deduct from market_signals (15 -> 10) to keep the total at 100%.
     overall = round(
         (pc * 0.20 + ev * 0.20 + di * 0.20 + ms * 0.10 + vr * 0.15 + ic * 0.15), 1
     )

@@ -1,4 +1,4 @@
-"""Modelos de datos compartidos para el flujo de auditoría."""
+"""Shared data models for the audit pipeline."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 
 
 class RepoMeta(BaseModel):
-    """Metadatos básicos del repo auditado."""
-    source: str  # URL o path local
+    """Basic metadata for the audited repo."""
+    source: str  # URL or local path
     is_remote: bool
     is_gist: bool = False
     owner: str | None = None
@@ -24,7 +24,7 @@ class RepoMeta(BaseModel):
 
 
 class Finding(BaseModel):
-    """Hallazgo individual de cualquier pilar."""
+    """Individual finding from any pillar."""
     severity: Literal["info", "low", "medium", "high", "critical"]
     category: str
     title: str
@@ -37,7 +37,7 @@ DataStatus = Literal["available", "skipped", "unavailable"]
 
 
 class TechnicalReport(BaseModel):
-    """Resultado del pilar técnico."""
+    """Result of the technical pillar."""
     score: float = 0.0  # 0-100
     data_status: DataStatus = "unavailable"
     test_coverage: float | None = None
@@ -58,7 +58,7 @@ class TechnicalReport(BaseModel):
 
 
 class BusinessReport(BaseModel):
-    """Resultado del pilar de negocio (LLM-driven)."""
+    """Result of the business pillar (LLM-driven)."""
     score: float = 0.0
     data_status: DataStatus = "unavailable"
     problem_clarity: float = 0.0
@@ -66,24 +66,24 @@ class BusinessReport(BaseModel):
     differentiation: float = 0.0
     market_signals: float = 0.0
     viability_risks: float = 0.0
-    intellectual_contribution: float = 0.0  # NEW (v0.5): novedad técnica 0-100
+    intellectual_contribution: float = 0.0  # NEW (v0.5): technical novelty 0-100
     summary: str = ""
-    novelty_summary: str = ""               # NEW (v0.5): qué es nuevo, en 1-2 frases
+    novelty_summary: str = ""               # NEW (v0.5): what's new, in 1-2 sentences
     nearest_prior_art: list[str] = Field(default_factory=list)  # NEW (v0.5)
     strengths: list[str] = Field(default_factory=list)
     weaknesses: list[str] = Field(default_factory=list)
     opportunities: list[str] = Field(default_factory=list)
-    developer_view: str = ""                # NEW (v0.5): "¿lo uso?"
-    cto_view: str = ""                      # NEW (v0.5): "¿lo adopto?"
-    investor_view: str = ""                 # NEW (v0.5): "¿lo financio?"
+    developer_view: str = ""                # NEW (v0.5): "do I use it?"
+    cto_view: str = ""                      # NEW (v0.5): "do I adopt it?"
+    investor_view: str = ""                 # NEW (v0.5): "do I fund it?"
     mind_changers: list[str] = Field(default_factory=list)  # NEW (v0.5)
     raw_analysis: str = ""
     backend: str = ""  # anthropic-api | claude-cli | openai-compatible
-    model: str = ""    # modelo realmente invocado
+    model: str = ""    # the model actually invoked
 
 
 class CommunityReport(BaseModel):
-    """Resultado del pilar de comunidad."""
+    """Result of the community pillar."""
     score: float = 0.0
     data_status: DataStatus = "unavailable"
     stars: int = 0
@@ -99,13 +99,13 @@ class CommunityReport(BaseModel):
     has_releases: bool = False
     agent_readiness_score: int = 0  # 0-10, see community/agent_readiness.py
     agent_readiness_signals: list[str] = Field(default_factory=list)
-    is_solo_active: bool = False  # solo author + recent commits → not abandoned
+    is_solo_active: bool = False  # solo author + recent commits -> not abandoned
     commits_per_author_90d: float = 0.0  # velocity-per-author (AI-era signal)
     findings: list[Finding] = Field(default_factory=list)
 
 
 class VerdictPayload(BaseModel):
-    """Veredicto top-level — qué hacer con esta auditoría."""
+    """Top-level verdict — what to do with this audit."""
     code: str = "pass"   # bet-on-it | worth-helping | promising-prototype | ...
     label: str = "Pass"
     one_liner: str = ""
@@ -116,7 +116,7 @@ class VerdictPayload(BaseModel):
 
 
 class AuditReport(BaseModel):
-    """Reporte completo de auditoría — la salida final."""
+    """Full audit report — the final output."""
     audited_at: datetime = Field(default_factory=datetime.utcnow)
     repo: RepoMeta
     overall_score: float = 0.0

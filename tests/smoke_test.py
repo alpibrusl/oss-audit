@@ -1,6 +1,6 @@
-"""Smoke test: verifica que el pipeline carga y corre sin API keys.
+"""Smoke test: verifies the pipeline loads and runs without API keys.
 
-Ejecuta el pilar técnico sobre un mini-repo creado en tmp.
+Runs the technical pillar against a tiny repo created in /tmp.
 """
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ def make_fake_repo(tmpdir: Path) -> Path:
     tests.mkdir()
     (tests / "test_main.py").write_text("def test_hello():\n    assert True\n")
 
-    # workflow CI
+    # CI workflow
     wf = repo / ".github" / "workflows"
     wf.mkdir(parents=True)
     (wf / "ci.yml").write_text("name: CI\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n")
@@ -44,7 +44,7 @@ def main():
         repo = make_fake_repo(Path(td))
         print(f"[smoke] Created fake repo at {repo}")
 
-        # Forzar skip de business y community para no requerir APIs
+        # Force skip of business and community so no APIs are required
         report = run_audit(
             str(repo),
             skip_business=True,

@@ -1,4 +1,4 @@
-"""CLI de OSS Auditor — comando `oss-audit` (ACLI-compliant)."""
+"""OSS Auditor CLI — `oss-audit` command (ACLI-compliant)."""
 from __future__ import annotations
 
 import time
@@ -31,7 +31,7 @@ load_dotenv()
 app = ACLIApp(
     name="oss-audit",
     version="0.6.0",
-    help="Auditoría integral de proyectos open-source: técnico + negocio + comunidad.",
+    help="Comprehensive open-source project audit: technical + business + community.",
 )
 console = Console()
 
@@ -58,13 +58,13 @@ def _render_audit_summary(report) -> None:
         f"({report.grade.upper()})",
         title="OSS Auditor", border_style=grade_color,
     ))
-    table = Table(title="Pilares", show_header=True, header_style="bold")
-    table.add_column("Pilar")
+    table = Table(title="Pillars", show_header=True, header_style="bold")
+    table.add_column("Pillar")
     table.add_column("Score", justify="right")
-    table.add_column("Peso", justify="right")
-    table.add_row("🔧 Técnico", f"{report.technical.score:.1f}", "40%")
-    table.add_row("💡 Tesis & innovación", f"{report.business.score:.1f}", "35%")
-    table.add_row("👥 Comunidad", f"{report.community.score:.1f}", "25%")
+    table.add_column("Weight", justify="right")
+    table.add_row("🔧 Technical", f"{report.technical.score:.1f}", "40%")
+    table.add_row("💡 Thesis & innovation", f"{report.business.score:.1f}", "35%")
+    table.add_row("👥 Community", f"{report.community.score:.1f}", "25%")
     console.print(table)
 
     v = report.verdict
@@ -80,15 +80,15 @@ def _render_audit_summary(report) -> None:
             f"[bold]{v.label}[/bold]  [dim](idea: {v.idea_band} · "
             f"exec: {v.execution_band} · relevance: {v.relevance_band})[/dim]\n"
             f"{v.one_liner}",
-            title=f"Veredicto: {v.code}", border_style=verdict_color,
+            title=f"Verdict: {v.code}", border_style=verdict_color,
         ))
 
     if report.executive_summary:
         console.print()
-        console.print(Panel(report.executive_summary, title="Resumen ejecutivo",
+        console.print(Panel(report.executive_summary, title="Executive summary",
                             border_style="cyan"))
     if report.top_recommendations:
-        console.print("\n[bold]Top recomendaciones:[/bold]")
+        console.print("\n[bold]Top recommendations:[/bold]")
         for i, rec in enumerate(report.top_recommendations, 1):
             console.print(f"  {i}. {rec}")
 
@@ -123,7 +123,7 @@ def audit(
     output: OutputFormat = typer.Option(
         OutputFormat.text, help="Output format. type:enum[text|json|table]"),
 ) -> None:
-    """Audita un repositorio open-source (técnico + negocio + comunidad)."""
+    """Audit an open-source repository (technical + business + community)."""
     start = time.time()
 
     def progress(label: str):
@@ -139,9 +139,9 @@ def audit(
             progress=progress,
         )
     except FileNotFoundError as e:
-        raise NotFoundError(str(e), hint="Comprueba la URL o el path local.")
+        raise NotFoundError(str(e), hint="Check the URL or the local path.")
     except Exception as e:  # noqa: BLE001 - surface as upstream failure
-        raise UpstreamError(f"El pipeline de auditoría falló: {e}")
+        raise UpstreamError(f"The audit pipeline failed: {e}")
 
     rid: int | None = save_audit(report) if save else None
 
@@ -164,9 +164,9 @@ def audit(
     def render_text():
         _render_audit_summary(report)
         if rid is not None:
-            console.print(f"\n[dim]💾 Guardado con id={rid} en {DEFAULT_DB}[/dim]")
+            console.print(f"\n[dim]💾 Saved with id={rid} in {DEFAULT_DB}[/dim]")
         if out_file is not None:
-            console.print(f"[green]✓[/green] Reporte guardado en [bold]{out_file}[/bold]")
+            console.print(f"[green]✓[/green] Report saved to [bold]{out_file}[/bold]")
 
     _emit_or_render(envelope, output, render_text)
 
@@ -185,7 +185,7 @@ def list_cmd(
     output: OutputFormat = typer.Option(
         OutputFormat.text, help="Output format. type:enum[text|json|table]"),
 ) -> None:
-    """Lista las auditorías guardadas."""
+    """List stored audits."""
     start = time.time()
     audits = list_audits(limit=limit)
     envelope = success_envelope(
@@ -194,11 +194,11 @@ def list_cmd(
 
     def render_text():
         if not audits:
-            console.print("[yellow]No hay auditorías guardadas todavía.[/yellow]")
+            console.print("[yellow]No audits stored yet.[/yellow]")
             return
-        table = Table(title="Auditorías guardadas")
+        table = Table(title="Stored audits")
         table.add_column("ID", justify="right")
-        table.add_column("Fecha")
+        table.add_column("Date")
         table.add_column("Repo")
         table.add_column("Score", justify="right")
         table.add_column("Grade")
@@ -226,13 +226,13 @@ def show(
     output: OutputFormat = typer.Option(
         OutputFormat.text, help="Output format. type:enum[text|json|table]"),
 ) -> None:
-    """Muestra una auditoría guardada."""
+    """Show a stored audit."""
     start = time.time()
     report = get_audit(audit_id)
     if report is None:
         raise NotFoundError(
-            f"No existe auditoría con id={audit_id}",
-            hint="Ejecuta `oss-audit list` para ver los IDs disponibles.",
+            f"No audit exists with id={audit_id}",
+            hint="Run `oss-audit list` to see the available IDs.",
         )
     envelope = success_envelope(
         "show", report.model_dump(mode="json"),
@@ -267,21 +267,21 @@ def badge(
     output: OutputFormat = typer.Option(
         OutputFormat.text, help="Output format. type:enum[text|json|table]"),
 ) -> None:
-    """Genera un badge shields.io a partir de una auditoría guardada."""
+    """Generate a shields.io badge from a stored audit."""
     start = time.time()
     if audit_id is None:
         recent = list_audits(limit=1)
         if not recent:
             raise NotFoundError(
-                "No hay auditorías guardadas todavía.",
-                hint="Ejecuta `oss-audit audit <repo>` primero.",
+                "No audits stored yet.",
+                hint="Run `oss-audit audit <repo>` first.",
             )
         audit_id = recent[0]["id"]
     report = get_audit(audit_id)
     if report is None:
         raise NotFoundError(
-            f"No existe auditoría con id={audit_id}",
-            hint="Ejecuta `oss-audit list` para ver IDs disponibles.",
+            f"No audit exists with id={audit_id}",
+            hint="Run `oss-audit list` to see available IDs.",
         )
 
     if format_ == "markdown":
@@ -293,8 +293,8 @@ def badge(
     else:
         from acli import InvalidArgsError
         raise InvalidArgsError(
-            f"Formato desconocido: {format_}",
-            hint="Usa: markdown | url | endpoint",
+            f"Unknown format: {format_}",
+            hint="Use: markdown | url | endpoint",
         )
 
     envelope = success_envelope(
@@ -331,12 +331,12 @@ def suggest(
     output: OutputFormat = typer.Option(
         OutputFormat.text, help="Output format. type:enum[text|json|table]"),
 ) -> None:
-    """Sugiere candidatos para auditar desde fuentes externas (HN hoy)."""
+    """Suggest audit candidates from external sources (HN today)."""
     start = time.time()
     try:
         candidates = fetch_hn_candidates(source=source, limit=limit, scan=scan)
     except (ValueError, RuntimeError) as e:
-        raise UpstreamError(f"No se pudo traer candidatos de HN: {e}")
+        raise UpstreamError(f"Couldn't fetch candidates from HN: {e}")
 
     data = {
         "source": f"hn:{source}",
@@ -348,9 +348,9 @@ def suggest(
 
     def render_text():
         if not candidates:
-            console.print("[yellow]Sin candidatos de GitHub/gist en este feed.[/yellow]")
+            console.print("[yellow]No GitHub/gist candidates in this feed.[/yellow]")
             return
-        table = Table(title=f"Candidatos desde HN/{source}")
+        table = Table(title=f"Candidates from HN/{source}")
         table.add_column("Pts", justify="right")
         table.add_column("Comments", justify="right")
         table.add_column("Repo")
@@ -359,7 +359,7 @@ def suggest(
             table.add_row(str(c.points), str(c.comments), c.url, c.title[:60])
         console.print(table)
         console.print()
-        console.print("[dim]Auditá con: oss-audit audit <URL>[/dim]")
+        console.print("[dim]Audit with: oss-audit audit <URL>[/dim]")
 
     _emit_or_render(envelope, output, render_text)
 
@@ -376,13 +376,13 @@ def serve(
     host: str = typer.Option("127.0.0.1", help="Bind address. type:string"),
     port: int = typer.Option(8765, help="Bind port. type:int"),
 ) -> None:
-    """Lanza la web local para navegar el histórico de auditorías."""
+    """Launch the local web UI to browse audit history."""
     import uvicorn
 
     from .web import create_app
 
     web_app = create_app()
-    console.print(f"[green]Sirviendo en[/green] http://{host}:{port}")
+    console.print(f"[green]Serving on[/green] http://{host}:{port}")
     uvicorn.run(web_app, host=host, port=port, log_level="warning")
 
 

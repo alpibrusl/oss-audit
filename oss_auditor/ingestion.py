@@ -1,4 +1,4 @@
-"""Ingesta del repo: clona desde URL o usa path local, detecta lenguajes."""
+"""Repo ingestion: clone from URL or use local path, detect languages."""
 from __future__ import annotations
 
 import os
@@ -11,7 +11,7 @@ from pathlib import Path
 
 from .models import RepoMeta
 
-# Mapeo de extensión -> lenguaje (subset relevante para análisis técnico)
+# Extension -> language map (subset relevant to the technical analysis)
 EXTENSION_MAP = {
     ".py": "Python",
     ".js": "JavaScript",
@@ -40,7 +40,7 @@ IGNORE_DIRS = {
 
 
 def parse_github_url(url: str) -> tuple[str, str] | None:
-    """Extrae (owner, repo) de una URL de GitHub. Devuelve None si no es GitHub."""
+    """Extract (owner, repo) from a GitHub URL. Returns None if not GitHub."""
     patterns = [
         r"github\.com[:/]([^/]+)/([^/.]+?)(?:\.git)?/?$",
         r"github\.com[:/]([^/]+)/([^/]+?)/?$",
@@ -53,7 +53,7 @@ def parse_github_url(url: str) -> tuple[str, str] | None:
 
 
 def parse_gist_url(url: str) -> tuple[str, str] | None:
-    """Extrae (owner, gist_id) de una URL de gist. Devuelve None si no es gist."""
+    """Extract (owner, gist_id) from a gist URL. Returns None if not a gist."""
     m = re.search(r"gist\.github\.com[:/]([^/]+)/([0-9a-f]+)", url.strip())
     if m:
         return m.group(1), m.group(2)
@@ -63,18 +63,18 @@ def parse_gist_url(url: str) -> tuple[str, str] | None:
 def classify_repo_type(
     repo_path: Path, total_loc: int, has_remote_traction: bool = False
 ) -> tuple[str, str]:
-    """Decide si el artefacto es `implementation` o `proposal`.
+    """Decide whether the artifact is `implementation` or `proposal`.
 
-    Heurística:
-    - Gist (lo decide el caller via is_gist) → siempre `proposal`.
-    - LOC < 500 + (README + docs) > 5K chars + algún signal de tracción
-      (caller pasa has_remote_traction) → `proposal`.
-    - Else → `implementation`.
+    Heuristic:
+    - Gist (the caller decides via is_gist) -> always `proposal`.
+    - LOC < 500 + (README + docs) > 5K chars + some traction signal
+      (caller passes has_remote_traction) -> `proposal`.
+    - Else -> `implementation`.
 
-    Devuelve (tipo, razón humana).
+    Returns (type, human-readable reason).
     """
     if total_loc >= 500:
-        return "implementation", f"{total_loc} LOC indica artefacto de código"
+        return "implementation", f"{total_loc} LOC indicates a code artifact"
 
     doc_chars = 0
     for name in ("README.md", "README.rst", "README", "SPEC.md", "RFC.md", "PROPOSAL.md"):
@@ -95,13 +95,13 @@ def classify_repo_type(
     if doc_chars >= 5_000 and (has_remote_traction or total_loc < 50):
         return (
             "proposal",
-            f"{total_loc} LOC + {doc_chars:,} chars de docs sugieren artefacto-spec",
+            f"{total_loc} LOC + {doc_chars:,} chars of docs suggest a spec artifact",
         )
-    return "implementation", "código presente, no parece spec puro"
+    return "implementation", "code present, doesn't look like a pure spec"
 
 
 def clone_repo(url: str, dest: Path) -> Path:
-    """Clona un repo (shallow) en dest. Devuelve path al directorio."""
+    """Shallow-clone a repo into dest. Returns the directory path."""
     target = dest / "repo"
     if target.exists():
         shutil.rmtree(target)
@@ -115,7 +115,7 @@ def clone_repo(url: str, dest: Path) -> Path:
 
 
 def count_lines(path: Path) -> int:
-    """Cuenta líneas no vacías de un archivo. Tolerante a errores de codificación."""
+    """Count non-empty lines of a file. Tolerant of encoding errors."""
     try:
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
             return sum(1 for line in f if line.strip())
@@ -124,12 +124,12 @@ def count_lines(path: Path) -> int:
 
 
 def detect_languages(repo_path: Path) -> tuple[dict[str, float], int, int]:
-    """Detecta lenguajes por LOC. Devuelve (% por lenguaje, total_files, total_loc)."""
+    """Detect languages by LOC. Returns (% per language, total_files, total_loc)."""
     loc_per_lang: Counter[str] = Counter()
     total_files = 0
 
     for root, dirs, files in os.walk(repo_path):
-        # filtrar directorios in-place
+        # filter directories in-place
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS and not d.startswith(".")]
         for fname in files:
             ext = Path(fname).suffix.lower()
@@ -150,10 +150,10 @@ def detect_languages(repo_path: Path) -> tuple[dict[str, float], int, int]:
 
 
 def ingest(source: str, workdir: Path | None = None) -> tuple[RepoMeta, Path]:
-    """Punto de entrada: detecta si es URL o path local y prepara el repo.
+    """Entry point: detect URL vs local path and prepare the repo.
 
-    Devuelve (RepoMeta, path al repo en disco).
-    Si es remoto, clona en un temp dir que el caller debe limpiar.
+    Returns (RepoMeta, on-disk path to the repo).
+    For a remote source, clones into a temp dir that the caller must clean up.
     """
     source = source.strip()
     is_url = source.startswith(("http://", "https://", "git@"))
@@ -162,7 +162,7 @@ def ingest(source: str, workdir: Path | None = None) -> tuple[RepoMeta, Path]:
     if is_url:
         if is_gist:
             owner_gist = parse_gist_url(source)
-            owner, name = owner_gist  # gist_id como name
+            owner, name = owner_gist  # gist_id used as name
             clone_url = f"https://gist.github.com/{name}.git"
         else:
             owner_repo = parse_github_url(source)
@@ -173,17 +173,17 @@ def ingest(source: str, workdir: Path | None = None) -> tuple[RepoMeta, Path]:
     else:
         repo_path = Path(source).expanduser().resolve()
         if not repo_path.exists():
-            raise FileNotFoundError(f"Path no existe: {repo_path}")
+            raise FileNotFoundError(f"Path does not exist: {repo_path}")
         owner, name = None, repo_path.name
 
     languages, total_files, total_loc = detect_languages(repo_path)
     primary = max(languages, key=languages.get) if languages else None
 
     if is_gist:
-        repo_type, reason = "proposal", "URL de gist → artefacto-spec"
+        repo_type, reason = "proposal", "gist URL -> spec artifact"
     else:
-        # Sin métricas de GitHub aún; el caller (pipeline) puede reclasificar
-        # cuando tenga stars/forks. Heurística inicial conservadora.
+        # No GitHub metrics yet; the caller (pipeline) can reclassify
+        # once stars/forks are known. Conservative initial heuristic.
         repo_type, reason = classify_repo_type(repo_path, total_loc, has_remote_traction=False)
 
     meta = RepoMeta(

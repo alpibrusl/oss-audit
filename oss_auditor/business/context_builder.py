@@ -1,16 +1,16 @@
-"""Construye un contexto rico del proyecto para análisis de negocio.
+"""Build a rich project context for the business analysis.
 
-Filosofía: no nos limitamos al README. Construimos un dossier que incluye:
-  - README + docs principales
-  - CHANGELOG (revela trayectoria y madurez)
-  - Estructura del proyecto (revela alcance real)
-  - Manifest files (deps revelan stack y ambición)
-  - Muestras de código de entry points y APIs públicas
-  - Issues y PRs recientes (qué pide la gente)
-  - Commits recientes (qué se está construyendo)
-  - Examples/ (qué casos de uso resuelve realmente)
+Philosophy: we don't stop at the README. We build a dossier that includes:
+  - README + main docs
+  - CHANGELOG (reveals trajectory and maturity)
+  - Project structure (reveals real scope)
+  - Manifest files (deps reveal stack and ambition)
+  - Code samples from entry points and public APIs
+  - Recent issues and PRs (what people are asking for)
+  - Recent commits (what's being built)
+  - examples/ (the use cases it actually solves)
 
-El LLM recibe evidencia, no marketing.
+The LLM receives evidence, not marketing.
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ import tiktoken
 
 from ..models import RepoMeta
 
-# Archivos de documentación de alta señal
+# High-signal documentation files
 DOC_FILES = [
     "README.md", "README.rst", "README.txt", "README",
     "CHANGELOG.md", "CHANGELOG.rst", "HISTORY.md",
@@ -43,7 +43,7 @@ CODE_EXTENSIONS = {".py", ".rs", ".js", ".ts", ".go", ".java", ".rb"}
 IGNORE_DIRS = {".git", "node_modules", "target", "dist", "build",
                "__pycache__", ".venv", "venv", "vendor", ".idea"}
 
-# Token budget (Claude Opus context limit es ~200k pero queremos eficiencia)
+# Token budget (Claude Opus context limit is ~200k but we want efficiency)
 MAX_CONTEXT_TOKENS = 60_000
 
 
@@ -55,7 +55,7 @@ def _read_text(path: Path, max_chars: int = 50_000) -> str:
 
 
 def _count_tokens(text: str) -> int:
-    """Estimación rápida con tiktoken (cl100k_base ≈ Claude tokenizer)."""
+    """Rough estimate via tiktoken (cl100k_base ~ Claude tokenizer)."""
     try:
         enc = tiktoken.get_encoding("cl100k_base")
         return len(enc.encode(text))
@@ -64,7 +64,7 @@ def _count_tokens(text: str) -> int:
 
 
 def gather_docs(repo_path: Path) -> dict[str, str]:
-    """Recoge archivos de documentación principales."""
+    """Gather the main documentation files."""
     docs = {}
     for name in DOC_FILES:
         p = repo_path / name
@@ -81,7 +81,7 @@ def gather_docs(repo_path: Path) -> dict[str, str]:
 
 
 def gather_manifests(repo_path: Path) -> dict[str, str]:
-    """Recoge archivos de manifest (deps, build config)."""
+    """Gather manifest files (deps, build config)."""
     manifests = {}
     for name in MANIFEST_FILES:
         p = repo_path / name
@@ -91,7 +91,7 @@ def gather_manifests(repo_path: Path) -> dict[str, str]:
 
 
 def project_structure(repo_path: Path, max_depth: int = 3, max_entries: int = 200) -> str:
-    """Genera un árbol del proyecto (depth-limited)."""
+    """Generate a depth-limited project tree."""
     lines: list[str] = []
     repo_path = repo_path.resolve()
 
@@ -119,13 +119,13 @@ def project_structure(repo_path: Path, max_depth: int = 3, max_entries: int = 20
 
 def gather_code_samples(repo_path: Path, primary_lang: str | None,
                         max_files: int = 6, max_chars_per_file: int = 8_000) -> dict[str, str]:
-    """Recoge muestras de código representativas: entry points, APIs públicas, examples."""
+    """Gather representative code samples: entry points, public APIs, examples."""
     samples: dict[str, str] = {}
 
-    # 1. Buscar entry points obvios
+    # 1. Look for obvious entry points
     candidates: list[Path] = []
 
-    # Convención por lenguaje
+    # Per-language conventions
     entry_patterns = {
         "Rust": ["src/main.rs", "src/lib.rs"],
         "Python": ["main.py", "app.py", "src/__init__.py"],
@@ -138,14 +138,14 @@ def gather_code_samples(repo_path: Path, primary_lang: str | None,
         if p.exists():
             candidates.append(p)
 
-    # 2. Examples folder es oro: muestra casos de uso reales
+    # 2. The examples folder is gold: shows real use cases
     examples_dir = repo_path / "examples"
     if examples_dir.is_dir():
         for f in list(examples_dir.iterdir())[:3]:
             if f.is_file() and f.suffix in CODE_EXTENSIONS or (f.is_file() and f.suffix in {".lex"}):
                 candidates.append(f)
 
-    # 3. Si es un workspace Rust, incluir Cargo.toml de crates
+    # 3. If it's a Rust workspace, include the per-crate Cargo.toml files
     crates_dir = repo_path / "crates"
     if crates_dir.is_dir():
         for crate in sorted(crates_dir.iterdir())[:5]:
@@ -166,7 +166,7 @@ def gather_code_samples(repo_path: Path, primary_lang: str | None,
 
 
 def fetch_recent_issues(meta: RepoMeta, n: int = 10) -> list[dict[str, Any]]:
-    """Trae las N issues más recientes (abiertas y cerradas) desde GitHub."""
+    """Fetch the N most recent issues (open and closed) from GitHub."""
     if not meta.owner or not meta.name:
         return []
     headers = {"Accept": "application/vnd.github+json"}
@@ -194,7 +194,7 @@ def fetch_recent_issues(meta: RepoMeta, n: int = 10) -> list[dict[str, Any]]:
 
 
 def fetch_recent_commits(meta: RepoMeta, n: int = 15) -> list[dict[str, Any]]:
-    """Trae N commits recientes para revelar qué se está construyendo."""
+    """Fetch N recent commits to reveal what's being built."""
     if not meta.owner or not meta.name:
         return []
     headers = {"Accept": "application/vnd.github+json"}
@@ -219,14 +219,16 @@ def fetch_recent_commits(meta: RepoMeta, n: int = 15) -> list[dict[str, Any]]:
 
 
 def _identifier_redactions(meta: RepoMeta) -> list[tuple[str, str]]:
-    """Pares (real, placeholder) para borrar identidad del dossier antes del LLM.
+    """(real, placeholder) pairs that scrub identity from the dossier before the LLM.
 
-    El LLM debe evaluar el proyecto por la EVIDENCIA, no por reconocer nombres.
-    Reduce bias por reputación memorizada ("Karpathy" → infla todo) y por
-    éxito memorizado ("React" → infla market_signals).
+    The LLM should evaluate the project on EVIDENCE, not on recognizing
+    names. Reduces bias from memorized reputation ("Karpathy" -> inflates
+    everything) and from memorized success ("React" -> inflates
+    market_signals).
 
-    Conservadores: solo nombres/dueño/URLs delatoras. NO redactamos el código,
-    la arquitectura, ni descripciones del problema — esa es la evidencia.
+    Conservative: only names/owner/giveaway URLs. We do NOT redact the
+    code, the architecture, or the problem description — that's the
+    evidence.
     """
     redactions: list[tuple[str, str]] = []
     if meta.name and len(meta.name) > 2:
@@ -243,11 +245,11 @@ def _identifier_redactions(meta: RepoMeta) -> list[tuple[str, str]]:
 
 
 def _redact(text: str, redactions: list[tuple[str, str]]) -> str:
-    """Aplica redacciones; case-insensitive, longest-first para evitar overlap."""
+    """Apply redactions; case-insensitive, longest-first to avoid overlap."""
     if not text or not redactions:
         return text
-    # Ordenar por longitud descendente para que "owner/repo" se reemplace antes
-    # que "repo" individual.
+    # Sort by descending length so that "owner/repo" is replaced before
+    # the bare "repo".
     for needle, placeholder in sorted(redactions, key=lambda p: -len(p[0])):
         text = re.sub(re.escape(needle), placeholder, text, flags=re.IGNORECASE)
     return text
@@ -258,11 +260,11 @@ def _redact_dict(d: dict[str, str], redactions: list[tuple[str, str]]) -> dict[s
 
 
 def strip_identifiers(context: dict[str, Any], meta: RepoMeta) -> dict[str, Any]:
-    """Devuelve una copia del contexto con identidad redactada.
+    """Return a copy of the context with identity redacted.
 
-    Controlable con OSS_AUDITOR_STRIP_IDENTIFIERS (default: "1"). Setear "0"
-    para debugging — siempre activa por defecto para que las auditorías
-    publicables sean libres de bias por nombre.
+    Controlled by OSS_AUDITOR_STRIP_IDENTIFIERS (default: "1"). Set "0"
+    for debugging — always on by default so publishable audits are free
+    from name-based bias.
     """
     if os.environ.get("OSS_AUDITOR_STRIP_IDENTIFIERS", "1") == "0":
         return context
@@ -281,8 +283,8 @@ def strip_identifiers(context: dict[str, Any], meta: RepoMeta) -> dict[str, Any]
     redacted["manifests"] = _redact_dict(context.get("manifests", {}), redactions)
     redacted["structure"] = _redact(context.get("structure", ""), redactions)
     redacted["code_samples"] = _redact_dict(context.get("code_samples", {}), redactions)
-    # Recent commits / issues vienen sin author en nuestro fetch, solo
-    # mensaje + título; redactamos por si el repo se mencionara en ellos.
+    # Recent commits / issues come without author in our fetch — only
+    # message + title; we redact in case the repo gets mentioned in them.
     redacted["recent_commits"] = [
         {**c, "message": _redact(c.get("message", ""), redactions)}
         for c in context.get("recent_commits", [])
@@ -298,7 +300,7 @@ def strip_identifiers(context: dict[str, Any], meta: RepoMeta) -> dict[str, Any]
 
 
 def build_business_context(meta: RepoMeta, repo_path: Path) -> dict[str, Any]:
-    """Punto de entrada: ensambla todo el dossier para análisis de negocio."""
+    """Entry point: assemble the full dossier for the business analysis."""
     docs = gather_docs(repo_path)
     manifests = gather_manifests(repo_path)
     structure = project_structure(repo_path)

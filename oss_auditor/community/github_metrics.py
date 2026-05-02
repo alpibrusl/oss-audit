@@ -1,7 +1,7 @@
-"""Métricas de comunidad desde la API REST de GitHub.
+"""Community metrics from the GitHub REST API.
 
-Sin token: ratelimit de 60 req/h. Con token: 5000/h.
-Si el repo no es de GitHub o no hay red, se devuelve un report mínimo.
+No token: 60 req/h rate limit. With token: 5000/h.
+If the repo isn't on GitHub or there's no network, we return a minimal report.
 """
 from __future__ import annotations
 
@@ -46,10 +46,10 @@ def _days_since(iso: str | None) -> int | None:
 
 
 def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityReport:
-    """Audita métricas de comunidad. Solo funciona con repos en GitHub.
+    """Audit community metrics. Only works for repos on GitHub.
 
-    `repo_path` se usa para detectar agent-readiness (señales locales:
-    CLAUDE.md, AGENTS.md, .cli/, mcp.json, etc.). Si no se pasa, se omite.
+    `repo_path` is used to detect agent-readiness (local signals:
+    CLAUDE.md, AGENTS.md, .cli/, mcp.json, etc.). If not passed, it's skipped.
     """
     ar_score = 0
     ar_signals: list[str] = []
@@ -63,8 +63,8 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
             agent_readiness_signals=ar_signals,
             findings=[Finding(
                 severity="info", category="community",
-                title="Métricas de comunidad no disponibles",
-                detail="Solo se pueden recolectar para repos de GitHub.",
+                title="Community metrics not available",
+                detail="They can only be collected for repos hosted on GitHub.",
             )],
         )
 
@@ -79,8 +79,8 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
                 agent_readiness_signals=ar_signals,
                 findings=[Finding(
                     severity="info", category="community",
-                    title=f"GitHub API devolvió status {status}",
-                    detail="Sin token, ratelimit es 60 req/h. Define GITHUB_TOKEN para más.",
+                    title=f"GitHub API returned status {status}",
+                    detail="Without a token the rate limit is 60 req/h. Set GITHUB_TOKEN for more.",
                 )],
             )
 
@@ -89,9 +89,9 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
         open_issues = repo_data.get("open_issues_count", 0)
         pushed_at = repo_data.get("pushed_at")
         last_commit_days = _days_since(pushed_at)
-        has_releases = False  # se actualizará abajo
+        has_releases = False  # updated below
 
-        # Contributors (top 25 por commits)
+        # Contributors (top 25 by commits)
         _, contribs = _get(client, f"/repos/{meta.owner}/{meta.name}/contributors", per_page=25)
         contributors_count = 0
         bus_top1 = 0.0
@@ -105,7 +105,7 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
                 top3 = sum(c.get("contributions", 0) for c in contribs_sorted[:3])
                 bus_top3 = round(top3 / total_commits * 100, 1)
 
-        # Commits últimos 90 días via stats/participation (52 semanas)
+        # Commits in the last 90 days via stats/participation (52 weeks)
         commits_90d = 0
         _, parti = _get(client, f"/repos/{meta.owner}/{meta.name}/stats/participation")
         if isinstance(parti, dict):
@@ -117,7 +117,7 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
         _, releases = _get(client, f"/repos/{meta.owner}/{meta.name}/releases", per_page=1)
         has_releases = isinstance(releases, list) and len(releases) > 0
 
-        # Issues cerrados (sample para tiempo medio de cierre)
+        # Closed issues (sample for average close time)
         _, closed = _get(client, f"/repos/{meta.owner}/{meta.name}/issues",
                          state="closed", per_page=30)
         avg_close_days: float | None = None
@@ -135,12 +135,12 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
                 avg_close_days = round(sum(durations) / len(durations), 1)
 
     # ----- Scoring (v0.2: alive + adopted, no headcount tax) -----
-    # Pesos: stars 25 / velocity 30 / recency 15 / agent-readiness 10 /
-    #        diversity 10 / releases 5 / close-time 5 = 100
-    # Bus factor ya NO es un score lever — sale como finding contextual.
+    # Weights: stars 25 / velocity 30 / recency 15 / agent-readiness 10 /
+    #          diversity 10 / releases 5 / close-time 5 = 100
+    # Bus factor is no longer a score lever — it surfaces as a contextual finding.
     score = 0.0
 
-    # Adopción (stars): 25
+    # Adoption (stars): 25
     if stars >= 1000:
         score += 25
     elif stars >= 100:
@@ -152,7 +152,7 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
     else:
         score += max(stars, 0)
 
-    # Velocity (commits últimos 90d): 25
+    # Velocity (commits in last 90d): 25
     if commits_90d >= 50:
         score += 25
     elif commits_90d >= 15:
@@ -162,13 +162,13 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
     elif commits_90d == 0:
         findings.append(Finding(
             severity="medium", category="community",
-            title="Sin commits en los últimos 90 días",
-            detail="Proyecto inactivo; señal de posible abandono.",
+            title="No commits in the last 90 days",
+            detail="Inactive project; possible abandonment signal.",
         ))
 
-    # Velocity-per-author (señal AI-era: solo+IA enviando mucho): 5
-    # active_contributors ~ contributors_count (aproximación; los devs que
-    # solo aparecen una vez también cuentan). 0 si no hay datos.
+    # Velocity-per-author (AI-era signal: solo+AI shipping a lot): 5
+    # active_contributors ~ contributors_count (approximation; devs who
+    # only show up once still count). 0 if no data.
     cpa_90d = commits_90d / max(contributors_count, 1) if contributors_count else 0.0
     if cpa_90d >= 30:
         score += 5
@@ -177,7 +177,7 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
     elif cpa_90d >= 5:
         score += 1
 
-    # Recencia: 15
+    # Recency: 15
     if last_commit_days is not None:
         if last_commit_days <= 14:
             score += 15
@@ -189,7 +189,7 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
     # Agent-readiness: 10
     score += ar_score
 
-    # Diversidad de contribuidores: 10
+    # Contributor diversity: 10
     if contributors_count >= 20:
         score += 10
     elif contributors_count >= 5:
@@ -201,16 +201,16 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
     if has_releases:
         score += 5
 
-    # Tiempo de cierre de issues: 5
+    # Issue close time: 5
     if avg_close_days is not None:
         if avg_close_days <= 7:
             score += 5
         elif avg_close_days <= 30:
             score += 3
 
-    # ----- Bus factor: contexto, no score -----
-    # Solo-autor + actividad reciente = NO abandonado, solo riesgo de continuidad.
-    # Solo-autor + sin actividad = sí preocupante.
+    # ----- Bus factor: context, not score -----
+    # Solo-author + recent activity = NOT abandoned, just continuity risk.
+    # Solo-author + no activity = genuinely worrying.
     is_solo = bus_top1 >= 70
     is_active = commits_90d >= 5 or (last_commit_days is not None and last_commit_days <= 30)
     is_solo_active = is_solo and is_active
@@ -218,16 +218,16 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
     if is_solo and not is_active:
         findings.append(Finding(
             severity="high", category="community",
-            title=f"Riesgo de abandono: bus factor {bus_top1}% sin actividad reciente",
-            detail="Autor único y sin commits recientes — combinación típica de proyectos abandonados.",
-            recommendation="Verificar el estado del proyecto antes de adoptarlo en producción.",
+            title=f"Abandonment risk: bus factor {bus_top1}% with no recent activity",
+            detail="Single author and no recent commits — typical combination for abandoned projects.",
+            recommendation="Verify the project's status before adopting it in production.",
         ))
     elif is_solo:
         findings.append(Finding(
             severity="info", category="community",
-            title=f"Proyecto solo-autor activo ({bus_top1}% top contributor)",
-            detail="Común en la era de agentes IA. Riesgo de continuidad real, pero no señal de baja calidad.",
-            recommendation="Considerar el riesgo de continuidad: ¿cuál sería tu plan si el autor se va?",
+            title=f"Active solo-author project ({bus_top1}% top contributor)",
+            detail="Common in the AI-agent era. Real continuity risk, but not a low-quality signal.",
+            recommendation="Consider the continuity risk: what's your plan if the author leaves?",
         ))
 
     score = min(round(score, 1), 100.0)
