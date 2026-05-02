@@ -11,32 +11,49 @@ WEIGHTS = {"technical": 0.40, "business": 0.35, "community": 0.25}
 def compute_overall(report: AuditReport) -> tuple[float, str]:
     """Calcula score total y grade.
 
-    Renormaliza pesos sobre los pilares con score > 0. Esto evita que
-    un --skip-* o un tipo `proposal` (sin pilar técnico) penalicen
-    artificialmente el total.
+    Renormaliza pesos solo sobre los pilares `intentionally_skipped`
+    (--skip-* o `proposal` sin pilar técnico). Los pilares
+    `data_unavailable` (se intentó analizar pero no hubo señal)
+    conservan su peso y contribuyen 0, penalizando el total — la
+    falta de datos es información, no un opt-out.
+
+    Además, se cap-ea el grade por número de pilares con datos reales,
+    para que un solo eje no llegue a platinum/gold/silver por
+    renormalización.
     """
-    pillars = {
-        "technical": report.technical.score,
-        "business": report.business.score,
-        "community": report.community.score,
-    }
-    active = {k: v for k, v in pillars.items() if v > 0}
-    if not active:
+    pillars = [
+        ("technical", report.technical.score, report.technical.data_status),
+        ("business", report.business.score, report.business.data_status),
+        ("community", report.community.score, report.community.data_status),
+    ]
+    available = [(k, s) for k, s, st in pillars if st == "available"]
+    skipped_weight = sum(WEIGHTS[k] for k, _, st in pillars if st == "skipped")
+
+    if not available:
         return 0.0, "fail"
-    total_weight = sum(WEIGHTS[k] for k in active)
-    overall = sum(score * WEIGHTS[k] for k, score in active.items()) / total_weight
+
+    # Renormalizamos solo el peso de los `skipped`. Los `unavailable`
+    # mantienen su peso y aportan 0.
+    denom = 1.0 - skipped_weight
+    overall = sum(score * WEIGHTS[k] for k, score in available) / denom
     overall = round(overall, 1)
 
-    if overall >= 90:
+    n_avail = len(available)
+    if overall >= 90 and n_avail >= 3:
         grade = "platinum"
-    elif overall >= 75:
+    elif overall >= 75 and n_avail >= 2:
         grade = "gold"
-    elif overall >= 60:
+    elif overall >= 60 and n_avail >= 2:
         grade = "silver"
     elif overall >= 40:
         grade = "bronze"
     else:
         grade = "fail"
+
+    # Con menos de 2 ejes con datos reales, el resultado es ruido de
+    # calibración, no señal. Tope: bronze.
+    if n_avail < 2 and grade in ("platinum", "gold", "silver"):
+        grade = "bronze"
 
     return overall, grade
 
