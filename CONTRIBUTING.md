@@ -1,6 +1,6 @@
-# Contribuir a OSS Auditor
+# Contributing to OSS Auditor
 
-Estamos en `v0.5.x` (alpha). El feedback más útil ahora mismo no es código — es **auditorías que creas que dan veredictos erróneos**. Esos casos son los que calibran el rubric.
+We're at `v0.5.x` (alpha). The most useful feedback right now isn't code — it's **audits where you think the verdict is wrong**. Those cases are what calibrate the rubric.
 
 ## Setup
 
@@ -14,41 +14,41 @@ python tests/smoke_test.py
 oss-audit audit . --skip-business --skip-community --no-save
 ```
 
-## Tipos de PR bienvenidos (ordenados por valor)
+## Welcome PR types (ranked by value)
 
-### 1. Reportes de "verdict erróneo"
+### 1. "Wrong verdict" reports
 
-Si auditás un repo y el veredicto te parece claramente mal, abre una issue con el template **"False verdict report"** indicando: URL del repo, veredicto que dio, qué veredicto crees correcto, y por qué. Esos casos guían la calibración v0.6.
+If you audit a repo and the verdict feels clearly wrong, open an issue with the **"False verdict report"** template stating: repo URL, the verdict the tool returned, the verdict you believe is correct, and why. Those cases drive the v0.6 calibration.
 
-### 2. Detectores de agent-readiness
+### 2. Agent-readiness detectors
 
-`oss_auditor/community/agent_readiness.py` detecta archivos como `CLAUDE.md`, `AGENTS.md`, `.cli/`, `mcp.json`. Si conocés otra convención del ecosistema (p. ej. `.devin/`, `.aider.conf`, `.copilot/`...), añadí una categoría siguiendo el patrón existente.
+`oss_auditor/community/agent_readiness.py` detects files like `CLAUDE.md`, `AGENTS.md`, `.cli/`, `mcp.json`. If you know another ecosystem convention (e.g. `.devin/`, `.aider.conf`, `.copilot/`...), add a category following the existing pattern.
 
-### 3. Detectores de composabilidad
+### 3. Composability detectors
 
-`oss_auditor/technical/composability.py` reconoce CLI / library / MCP / HTTP server / workspace en Python, Rust, Node, Go. Falta cobertura en Java, Kotlin, Swift, Ruby, Elixir.
+`oss_auditor/technical/composability.py` recognizes CLI / library / MCP / HTTP server / workspace in Python, Rust, Node, and Go. Coverage is missing for Java, Kotlin, Swift, Ruby, and Elixir.
 
 ### 4. Language runners
 
-`oss_auditor/technical/lang_runners.py` define el patrón. Necesitamos runners para Java (Maven + spotbugs), Kotlin (gradle + ktlint), Swift (swiftlint), Ruby (bundler-audit + rubocop), Elixir (mix audit + credo).
+`oss_auditor/technical/lang_runners.py` defines the pattern. We need runners for Java (Maven + spotbugs), Kotlin (gradle + ktlint), Swift (swiftlint), Ruby (bundler-audit + rubocop), and Elixir (mix audit + credo).
 
-### 5. Bug fixes y refactors
+### 5. Bug fixes and refactors
 
-Antes de un refactor grande, abre una issue para discutir — los pesos del scoring y la rúbrica del verdict son frágiles y todavía sin calibrar.
+Before a large refactor, open an issue to discuss — the scoring weights and the verdict rubric are fragile and not yet calibrated.
 
 ## Workflow
 
-1. Forkeá y creá una rama: `git checkout -b feat/mi-feature`.
+1. Fork and create a branch: `git checkout -b feat/my-feature`.
 2. Code → tests → smoke (`python tests/smoke_test.py`).
-3. Auto-audita: `oss-audit audit . --skip-business --no-save` debería seguir scoreando ≥ silver en técnico tras tu cambio.
-4. PR con descripción concreta de qué cambia y por qué. Si añadís un detector, incluí 1-2 ejemplos de repos donde dispara.
+3. Self-audit: `oss-audit audit . --skip-business --no-save` should still score ≥ silver on the technical pillar after your change.
+4. PR with a concrete description of what changes and why. If you add a detector, include 1–2 sample repos where it fires.
 
-## Lo que NO buscamos ahora
+## What we're NOT looking for right now
 
-- Reescritura de la rúbrica entera. Hay calibración pendiente con datos reales.
-- PyPI publish. Después de v0.6.
-- Más backends LLM hasta tener métrica real de cuál usa la gente.
+- Rewriting the entire rubric. Calibration with real data is still pending.
+- Publishing to PyPI. Post-v0.6.
+- More LLM backends until we have real data on which ones people actually use.
 
-## Licencia
+## License
 
-Todos los PRs se aceptan bajo [EUPL-1.2](LICENSE) — la licencia del proyecto.
+Every PR is accepted under [EUPL-1.2](LICENSE) — the project's license.
