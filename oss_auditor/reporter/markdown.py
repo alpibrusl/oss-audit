@@ -24,6 +24,51 @@ def render_markdown(report: AuditReport) -> str:
     lines.append(f"**Score Global:** **{r.overall_score}/100** {grade_emoji} _{r.grade.upper()}_")
     lines.append("")
 
+    # --- Veredicto ---
+    v = r.verdict
+    if v.code and v.code != "pass":
+        lines.append(f"## ⚖️ Veredicto: `{v.code}` — {v.label}")
+    else:
+        lines.append(f"## ⚖️ Veredicto: `{v.code}`")
+    lines.append("")
+    if v.one_liner:
+        lines.append(f"> {v.one_liner}")
+        lines.append("")
+    lines.append(f"**Idea:** `{v.idea_band}` &middot; "
+                 f"**Ejecución:** `{v.execution_band}` &middot; "
+                 f"**Relevancia:** `{v.relevance_band}`")
+    lines.append("")
+    if v.actions:
+        lines.append("| Audiencia | Acción |")
+        lines.append("|-----------|--------|")
+        for who in ("developer", "cto", "investor"):
+            if v.actions.get(who):
+                lines.append(f"| {who.capitalize()} | {v.actions[who]} |")
+        lines.append("")
+
+    # --- Vistas por audiencia (LLM, evidence-based) ---
+    b_views = (r.business.developer_view, r.business.cto_view, r.business.investor_view)
+    if any(b_views):
+        lines.append("## 👁️ Vistas por audiencia")
+        lines.append("")
+        if r.business.developer_view:
+            lines.append(f"**Developer.** {r.business.developer_view}")
+            lines.append("")
+        if r.business.cto_view:
+            lines.append(f"**CTO / VP-Eng.** {r.business.cto_view}")
+            lines.append("")
+        if r.business.investor_view:
+            lines.append(f"**Inversor.** {r.business.investor_view}")
+            lines.append("")
+
+    # --- Counterfactuals: qué cambiaría el veredicto ---
+    if r.counterfactuals:
+        lines.append("## 🔁 Qué cambiaría mi opinión")
+        lines.append("")
+        for cf in r.counterfactuals:
+            lines.append(f"- {cf}")
+        lines.append("")
+
     # --- Resumen ejecutivo ---
     lines.append("## Resumen ejecutivo")
     lines.append("")
@@ -41,7 +86,7 @@ def render_markdown(report: AuditReport) -> str:
     lines.append("| Pilar | Score | Peso |")
     lines.append("|-------|------:|-----:|")
     lines.append(f"| 🔧 Técnico | {r.technical.score:.1f} | 40% |")
-    lines.append(f"| 💼 Negocio | {r.business.score:.1f} | 35% |")
+    lines.append(f"| 💡 Tesis & innovación | {r.business.score:.1f} | 35% |")
     lines.append(f"| 👥 Comunidad | {r.community.score:.1f} | 25% |")
     lines.append("")
 
@@ -106,8 +151,8 @@ def render_markdown(report: AuditReport) -> str:
                 lines.append(f"  - 💡 _{f.recommendation}_")
         lines.append("")
 
-    # --- Pilar negocio ---
-    lines.append("## 💼 Pilar de negocio")
+    # --- Pilar tesis & innovación ---
+    lines.append("## 💡 Pilar de tesis & innovación")
     lines.append("")
     b = r.business
     lines.append(f"**Score:** {b.score:.1f}/100")
@@ -116,6 +161,14 @@ def render_markdown(report: AuditReport) -> str:
     lines.append("")
     if b.summary:
         lines.append(f"> {b.summary}")
+        lines.append("")
+    if b.novelty_summary:
+        lines.append(f"**Novedad:** {b.novelty_summary}")
+        lines.append("")
+    if b.nearest_prior_art:
+        lines.append("**Prior art más cercano:**")
+        for p in b.nearest_prior_art:
+            lines.append(f"- {p}")
         lines.append("")
 
     lines.append("### Sub-scores")
@@ -127,6 +180,7 @@ def render_markdown(report: AuditReport) -> str:
     lines.append(f"| Diferenciación | {b.differentiation:.0f} |")
     lines.append(f"| Señales de mercado | {b.market_signals:.0f} |")
     lines.append(f"| Viabilidad / riesgos | {b.viability_risks:.0f} |")
+    lines.append(f"| Contribución intelectual | {b.intellectual_contribution:.0f} |")
     lines.append("")
 
     if b.strengths:
@@ -184,5 +238,5 @@ def render_markdown(report: AuditReport) -> str:
         lines.append("")
 
     lines.append("---")
-    lines.append(f"_Generado por OSS Auditor v0.4.0_")
+    lines.append(f"_Generado por OSS Auditor v0.5.0_")
     return "\n".join(lines)

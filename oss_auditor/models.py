@@ -61,10 +61,17 @@ class BusinessReport(BaseModel):
     differentiation: float = 0.0
     market_signals: float = 0.0
     viability_risks: float = 0.0
+    intellectual_contribution: float = 0.0  # NEW (v0.5): novedad técnica 0-100
     summary: str = ""
+    novelty_summary: str = ""               # NEW (v0.5): qué es nuevo, en 1-2 frases
+    nearest_prior_art: list[str] = Field(default_factory=list)  # NEW (v0.5)
     strengths: list[str] = Field(default_factory=list)
     weaknesses: list[str] = Field(default_factory=list)
     opportunities: list[str] = Field(default_factory=list)
+    developer_view: str = ""                # NEW (v0.5): "¿lo uso?"
+    cto_view: str = ""                      # NEW (v0.5): "¿lo adopto?"
+    investor_view: str = ""                 # NEW (v0.5): "¿lo financio?"
+    mind_changers: list[str] = Field(default_factory=list)  # NEW (v0.5)
     raw_analysis: str = ""
     backend: str = ""  # anthropic-api | claude-cli | openai-compatible
     model: str = ""    # modelo realmente invocado
@@ -91,12 +98,25 @@ class CommunityReport(BaseModel):
     findings: list[Finding] = Field(default_factory=list)
 
 
+class VerdictPayload(BaseModel):
+    """Veredicto top-level — qué hacer con esta auditoría."""
+    code: str = "pass"   # bet-on-it | worth-helping | promising-prototype | ...
+    label: str = "Pass"
+    one_liner: str = ""
+    idea_band: str = "low"           # low | medium | high
+    execution_band: str = "low"
+    relevance_band: str = "low"
+    actions: dict[str, str] = Field(default_factory=dict)  # developer/cto/investor
+
+
 class AuditReport(BaseModel):
     """Reporte completo de auditoría — la salida final."""
     audited_at: datetime = Field(default_factory=datetime.utcnow)
     repo: RepoMeta
     overall_score: float = 0.0
     grade: Literal["bronze", "silver", "gold", "platinum", "fail"] = "fail"
+    verdict: VerdictPayload = Field(default_factory=VerdictPayload)
+    counterfactuals: list[str] = Field(default_factory=list)
     technical: TechnicalReport = Field(default_factory=TechnicalReport)
     business: BusinessReport = Field(default_factory=BusinessReport)
     community: CommunityReport = Field(default_factory=CommunityReport)

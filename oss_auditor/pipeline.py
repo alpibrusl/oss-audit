@@ -9,8 +9,9 @@ from .business.analyzer import analyze_business
 from .business.context_builder import build_business_context
 from .community.github_metrics import audit_community
 from .ingestion import ingest
-from .models import AuditReport
+from .models import AuditReport, VerdictPayload
 from .reporter.scorer import compute_overall, top_recommendations
+from .reporter.verdict import compute_counterfactuals, compute_verdict
 from .technical.runner import audit_technical
 
 
@@ -61,6 +62,20 @@ def run_audit(source: str, skip_business: bool = False,
         report.top_recommendations = top_recommendations(report)
         if report.business.summary:
             report.executive_summary = report.business.summary
+
+        step("⚖️  Veredicto y contrafactuales...")
+        v = compute_verdict(report)
+        report.verdict = VerdictPayload(
+            code=v.code, label=v.label, one_liner=v.one_liner,
+            idea_band=v.idea_band, execution_band=v.execution_band,
+            relevance_band=v.relevance_band, actions=v.actions,
+        )
+        # Combinamos counterfactuals programáticos + LLM (mind_changers)
+        report.counterfactuals = compute_counterfactuals(report)
+        if report.business.mind_changers:
+            report.counterfactuals.extend(
+                f"[evidencia] {m}" for m in report.business.mind_changers
+            )
 
         return report
     finally:

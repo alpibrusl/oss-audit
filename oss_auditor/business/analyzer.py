@@ -29,6 +29,7 @@ ANALYSIS_SCHEMA: dict = {
                 "differentiation": {"type": "number"},
                 "market_signals": {"type": "number"},
                 "viability_risks": {"type": "number"},
+                "intellectual_contribution": {"type": "number"},
             },
             "required": [
                 "problem_clarity", "execution_vs_ambition",
@@ -36,10 +37,16 @@ ANALYSIS_SCHEMA: dict = {
             ],
         },
         "summary": {"type": "string"},
+        "novelty_summary": {"type": "string"},
+        "nearest_prior_art": {"type": "array", "items": {"type": "string"}},
         "strengths": {"type": "array", "items": {"type": "string"}},
         "weaknesses": {"type": "array", "items": {"type": "string"}},
         "opportunities": {"type": "array", "items": {"type": "string"}},
         "risks": {"type": "array"},
+        "developer_view": {"type": "string"},
+        "cto_view": {"type": "string"},
+        "investor_view": {"type": "string"},
+        "mind_changers": {"type": "array", "items": {"type": "string"}},
     },
     "required": ["scores", "summary"],
 }
@@ -99,6 +106,10 @@ estructurado en JSON.
 
 # Tu tarea
 
+Este es el pilar de **Tesis & Innovación**. No solo evalúas ejecución; evalúas \
+qué tan **nueva** y **defensible** es la idea, qué priors existen, y qué haría un \
+developer / CTO / inversor con esta información.
+
 Devuelve **solo JSON válido** con esta estructura exacta:
 
 ```json
@@ -108,34 +119,26 @@ Devuelve **solo JSON válido** con esta estructura exacta:
     "execution_vs_ambition": <0-100>,
     "differentiation": <0-100>,
     "market_signals": <0-100>,
-    "viability_risks": <0-100>
+    "viability_risks": <0-100>,
+    "intellectual_contribution": <0-100>
   }},
   "summary": "<2-3 frases que capturen la esencia del proyecto y su estado real>",
-  "problem": {{
-    "description": "<qué problema resuelve, según evidencia>",
-    "target_users": "<quiénes son los usuarios objetivo>",
-    "evidence": "<archivo/sección que respalda esto>"
-  }},
-  "execution": {{
-    "ambition_declared": "<lo que el proyecto DICE ser>",
-    "execution_observed": "<lo que el código/commits MUESTRAN>",
-    "gap_analysis": "<discrepancia y qué significa>"
-  }},
-  "differentiation": {{
-    "unique_aspects": ["<aspecto 1>", "<aspecto 2>"],
-    "competitors": ["<competidor real con razón>"],
-    "moat_assessment": "<qué tan defensible es>"
-  }},
-  "market_signals": {{
-    "demand_evidence": "<señales de demanda real>",
-    "adoption_indicators": "<stars, forks, menciones, etc.>"
-  }},
+  "novelty_summary": "<1-2 frases: qué primitive/abstracción/técnica es nueva aquí, si hay alguna>",
+  "nearest_prior_art": ["<proyecto/paper más cercano 1>", "<2>", "<3 si aplica>"],
+  "strengths": ["<fortaleza concreta 1>", "<fortaleza 2>"],
+  "weaknesses": ["<debilidad concreta 1>", "<debilidad 2>"],
+  "opportunities": ["<oportunidad 1>", "<oportunidad 2>"],
   "risks": [
     {{"risk": "<riesgo>", "severity": "low|medium|high", "evidence": "<base>"}}
   ],
-  "strengths": ["<fortaleza concreta 1>", "<fortaleza 2>"],
-  "weaknesses": ["<debilidad concreta 1>", "<debilidad 2>"],
-  "opportunities": ["<oportunidad 1>", "<oportunidad 2>"]
+  "developer_view": "<3 frases: ¿lo uso en prod? ¿contribuyo? ¿aprendo de él?>",
+  "cto_view": "<3 frases: ¿adopto / pilotear / esperar / pasar? stack risk. equipo hireable?>",
+  "investor_view": "<3 frases: ¿fundable? stage match. riesgo principal: técnico / mercado / equipo>",
+  "mind_changers": [
+    "<señal observable que, de aparecer, cambiaría tu evaluación; e.g. '5 contribuidores externos en 6 meses'>",
+    "<otra señal>",
+    "<otra señal>"
+  ]
 }}
 ```
 
@@ -153,6 +156,10 @@ Devuelve **solo JSON válido** con esta estructura exacta:
 
 - **market_signals**: ¿Hay evidencia de demanda? 90+ = adopción visible, issues con casos reales, \
   empresas usándolo. 30-50 = nicho identificado pero sin tracción aún. <30 = solo el autor lo usa.
+
+- **intellectual_contribution**: ¿Qué tanto avanza este proyecto el state-of-the-art? 90+ = primitive \
+  o abstracción genuinamente nueva, citable como prior art futura. 50 = combinación útil de ideas \
+  existentes. <30 = aplicación directa de patterns conocidos.
 
 - **viability_risks**: ¿Qué tan viable es a 12-24 meses? Evalúa riesgos: complejidad técnica, \
   competencia, dependencia de un solo autor, modelo de monetización ausente, etc. 90+ = pocos \
@@ -315,7 +322,12 @@ def analyze_business(context: dict[str, Any]) -> BusinessReport:
     di = float(scores.get("differentiation", 0))
     ms = float(scores.get("market_signals", 0))
     vr = float(scores.get("viability_risks", 0))
-    overall = round((pc * 0.25 + ev * 0.25 + di * 0.20 + ms * 0.15 + vr * 0.15), 1)
+    ic = float(scores.get("intellectual_contribution", 0))
+    # Fórmula v0.5: contribución intelectual entra al score con peso 15%,
+    # restamos de market_signals (de 15→10) para mantener total = 100%.
+    overall = round(
+        (pc * 0.20 + ev * 0.20 + di * 0.20 + ms * 0.10 + vr * 0.15 + ic * 0.15), 1
+    )
 
     risks_text = parsed.get("risks", [])
     weaknesses = parsed.get("weaknesses", [])
@@ -331,10 +343,17 @@ def analyze_business(context: dict[str, Any]) -> BusinessReport:
         differentiation=di,
         market_signals=ms,
         viability_risks=vr,
+        intellectual_contribution=ic,
         summary=parsed.get("summary", ""),
+        novelty_summary=parsed.get("novelty_summary", ""),
+        nearest_prior_art=parsed.get("nearest_prior_art", []),
         strengths=parsed.get("strengths", []),
         weaknesses=weaknesses,
         opportunities=parsed.get("opportunities", []),
+        developer_view=parsed.get("developer_view", ""),
+        cto_view=parsed.get("cto_view", ""),
+        investor_view=parsed.get("investor_view", ""),
+        mind_changers=parsed.get("mind_changers", []),
         raw_analysis=json.dumps(parsed, indent=2, ensure_ascii=False),
         backend=backend.name,
         model=used_model,
