@@ -58,6 +58,8 @@ class BusinessReport(BaseModel):
     weaknesses: list[str] = Field(default_factory=list)
     opportunities: list[str] = Field(default_factory=list)
     raw_analysis: str = ""
+    backend: str = ""  # anthropic-api | claude-cli | openai-compatible
+    model: str = ""    # modelo realmente invocado
 
 
 class CommunityReport(BaseModel):

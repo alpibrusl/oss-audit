@@ -1,6 +1,6 @@
 [project]
 name = "oss-auditor"
-version = "0.2.0"
+version = "0.3.0"
 description = "Auditoría integral para proyectos open-source: código, negocio y comunidad"
 requires-python = ">=3.10"
 dependencies = [
