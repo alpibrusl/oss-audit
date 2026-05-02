@@ -114,6 +114,79 @@ class ClaudeCLIBackend:
         return text, used_model
 
 
+# ---------- Claude Agent SDK (subscription, programmatic) ----------
+
+@dataclass
+class ClaudeAgentSDKBackend:
+    """Vía oficial para uso programático de Claude Code.
+
+    A diferencia de `claude --print` (modo agente conversacional), aquí
+    desactivamos todas las tools y forzamos `max_turns=1` para obtener un
+    texto crudo del modelo, no una "tarea" agentica. Hereda la auth de la
+    suscripción Pro/Max sin necesidad de API key.
+    """
+    name: str = "claude-agent-sdk"
+    model: str = "claude-opus-4-7"
+    timeout: float = 600.0
+
+    def complete(
+        self, system: str, user: str, max_tokens: int,
+        json_schema: dict | None = None,
+    ) -> tuple[str, str]:
+        import asyncio
+
+        from claude_agent_sdk import (
+            AssistantMessage,
+            ClaudeAgentOptions,
+            ResultMessage,
+            TextBlock,
+            query,
+        )
+
+        options = ClaudeAgentOptions(
+            system_prompt=system,
+            model=self.model,
+            allowed_tools=[],
+            max_turns=1,
+        )
+
+        async def _run() -> tuple[str, str]:
+            # Capturamos solo la respuesta del PRIMER turno del asistente.
+            # En entornos con Stop hooks (como Claude Code mismo), después
+            # del modelo el host puede inyectar UserMessages de hooks
+            # ("commit your changes!"), lo que derailia la conversación.
+            # Nos quedamos con el primer message_id y descartamos el resto.
+            chunks: list[str] = []
+            used_model = self.model
+            first_message_id: str | None = None
+            async for msg in query(prompt=user, options=options):
+                if isinstance(msg, AssistantMessage):
+                    mid = getattr(msg, "message_id", None)
+                    if first_message_id is None:
+                        first_message_id = mid
+                    elif mid != first_message_id:
+                        # turno derivado (post-hook) — ignorar
+                        continue
+                    if getattr(msg, "model", None):
+                        used_model = msg.model
+                    for block in msg.content:
+                        if isinstance(block, TextBlock):
+                            chunks.append(block.text)
+                elif isinstance(msg, ResultMessage):
+                    # Si ya tenemos texto, no nos importa si el ResultMessage
+                    # marca error por culpa de hooks que se metieron después.
+                    if not chunks and getattr(msg, "is_error", False):
+                        raise RuntimeError(
+                            f"Claude Agent SDK error: {getattr(msg, 'result', None) or 'unknown'}"
+                        )
+            return "".join(chunks), used_model
+
+        try:
+            return asyncio.run(asyncio.wait_for(_run(), timeout=self.timeout))
+        except asyncio.TimeoutError as e:
+            raise RuntimeError(f"Claude Agent SDK: timeout tras {self.timeout}s") from e
+
+
 # ---------- OpenAI-compatible ----------
 
 @dataclass
@@ -168,12 +241,20 @@ def select_backend() -> LLMBackend | None:
 
     has_anthropic_key = bool(os.environ.get("ANTHROPIC_API_KEY"))
     has_claude_cli = shutil.which("claude") is not None
+    try:
+        import claude_agent_sdk  # noqa: F401
+        has_agent_sdk = True
+    except ImportError:
+        has_agent_sdk = False
     has_openai_key = bool(os.environ.get("OPENAI_API_KEY"))
 
     pick = explicit
     if not pick:
         if has_anthropic_key:
             pick = "anthropic-api"
+        elif has_agent_sdk and has_claude_cli:
+            # SDK usa el binario claude por debajo, pero con auth + control programático.
+            pick = "claude-agent-sdk"
         elif has_claude_cli:
             pick = "claude-cli"
         elif has_openai_key:
@@ -188,6 +269,10 @@ def select_backend() -> LLMBackend | None:
             api_key=os.environ["ANTHROPIC_API_KEY"],
             model=model or "claude-opus-4-7",
         )
+    if pick == "claude-agent-sdk":
+        if not (has_agent_sdk and has_claude_cli):
+            return None
+        return ClaudeAgentSDKBackend(model=model or "claude-opus-4-7")
     if pick == "claude-cli":
         if not has_claude_cli:
             return None
