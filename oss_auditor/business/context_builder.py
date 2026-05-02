@@ -15,6 +15,7 @@ El LLM recibe evidencia, no marketing.
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -217,6 +218,85 @@ def fetch_recent_commits(meta: RepoMeta, n: int = 15) -> list[dict[str, Any]]:
         return []
 
 
+def _identifier_redactions(meta: RepoMeta) -> list[tuple[str, str]]:
+    """Pares (real, placeholder) para borrar identidad del dossier antes del LLM.
+
+    El LLM debe evaluar el proyecto por la EVIDENCIA, no por reconocer nombres.
+    Reduce bias por reputación memorizada ("Karpathy" → infla todo) y por
+    éxito memorizado ("React" → infla market_signals).
+
+    Conservadores: solo nombres/dueño/URLs delatoras. NO redactamos el código,
+    la arquitectura, ni descripciones del problema — esa es la evidencia.
+    """
+    redactions: list[tuple[str, str]] = []
+    if meta.name and len(meta.name) > 2:
+        redactions.append((meta.name, "<repo>"))
+    if meta.owner and len(meta.owner) > 2:
+        redactions.append((meta.owner, "<owner>"))
+    if meta.owner and meta.name:
+        redactions.append((f"{meta.owner}/{meta.name}", "<owner>/<repo>"))
+        redactions.append(
+            (f"github.com/{meta.owner}/{meta.name}", "github.com/<owner>/<repo>"))
+        redactions.append(
+            (f"github.com:{meta.owner}/{meta.name}", "github.com:<owner>/<repo>"))
+    return redactions
+
+
+def _redact(text: str, redactions: list[tuple[str, str]]) -> str:
+    """Aplica redacciones; case-insensitive, longest-first para evitar overlap."""
+    if not text or not redactions:
+        return text
+    # Ordenar por longitud descendente para que "owner/repo" se reemplace antes
+    # que "repo" individual.
+    for needle, placeholder in sorted(redactions, key=lambda p: -len(p[0])):
+        text = re.sub(re.escape(needle), placeholder, text, flags=re.IGNORECASE)
+    return text
+
+
+def _redact_dict(d: dict[str, str], redactions: list[tuple[str, str]]) -> dict[str, str]:
+    return {k: _redact(v, redactions) for k, v in d.items()}
+
+
+def strip_identifiers(context: dict[str, Any], meta: RepoMeta) -> dict[str, Any]:
+    """Devuelve una copia del contexto con identidad redactada.
+
+    Controlable con OSS_AUDITOR_STRIP_IDENTIFIERS (default: "1"). Setear "0"
+    para debugging — siempre activa por defecto para que las auditorías
+    publicables sean libres de bias por nombre.
+    """
+    if os.environ.get("OSS_AUDITOR_STRIP_IDENTIFIERS", "1") == "0":
+        return context
+
+    redactions = _identifier_redactions(meta)
+    if not redactions:
+        return context
+
+    redacted = dict(context)  # shallow copy ok; we replace nested structures
+    redacted["meta"] = {
+        **context["meta"],
+        "name": "<repo>",
+        "owner": "<owner>",
+    }
+    redacted["docs"] = _redact_dict(context.get("docs", {}), redactions)
+    redacted["manifests"] = _redact_dict(context.get("manifests", {}), redactions)
+    redacted["structure"] = _redact(context.get("structure", ""), redactions)
+    redacted["code_samples"] = _redact_dict(context.get("code_samples", {}), redactions)
+    # Recent commits / issues vienen sin author en nuestro fetch, solo
+    # mensaje + título; redactamos por si el repo se mencionara en ellos.
+    redacted["recent_commits"] = [
+        {**c, "message": _redact(c.get("message", ""), redactions)}
+        for c in context.get("recent_commits", [])
+    ]
+    redacted["recent_issues"] = [
+        {**i,
+         "title": _redact(i.get("title", ""), redactions),
+         "body_excerpt": _redact(i.get("body_excerpt", ""), redactions)}
+        for i in context.get("recent_issues", [])
+    ]
+    redacted["_redactions_applied"] = len(redactions)
+    return redacted
+
+
 def build_business_context(meta: RepoMeta, repo_path: Path) -> dict[str, Any]:
     """Punto de entrada: ensambla todo el dossier para análisis de negocio."""
     docs = gather_docs(repo_path)
@@ -243,7 +323,8 @@ def build_business_context(meta: RepoMeta, repo_path: Path) -> dict[str, Any]:
         "recent_commits": commits,
     }
 
-    # Estimación de tokens (informativo)
+    context = strip_identifiers(context, meta)
+
     blob = str(context)
     context["_token_estimate"] = _count_tokens(blob)
     return context

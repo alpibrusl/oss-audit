@@ -23,13 +23,14 @@ from rich.table import Table
 from .pipeline import run_audit
 from .reporter.badge import to_endpoint_payload, to_markdown, to_shields_url
 from .reporter.markdown import render_markdown
+from .sources.hn import fetch_hn_candidates
 from .storage import DEFAULT_DB, get_audit, list_audits, save_audit
 
 load_dotenv()
 
 app = ACLIApp(
     name="oss-audit",
-    version="0.5.0",
+    version="0.6.0",
     help="Auditoría integral de proyectos open-source: técnico + negocio + comunidad.",
 )
 console = Console()
@@ -158,7 +159,7 @@ def audit(
         data["report_file"] = str(out_file)
 
     envelope = success_envelope(
-        "audit", data, version="0.5.0", start_time=start)
+        "audit", data, version="0.6.0", start_time=start)
 
     def render_text():
         _render_audit_summary(report)
@@ -189,7 +190,7 @@ def list_cmd(
     audits = list_audits(limit=limit)
     envelope = success_envelope(
         "list", {"audits": audits, "count": len(audits)},
-        version="0.5.0", start_time=start)
+        version="0.6.0", start_time=start)
 
     def render_text():
         if not audits:
@@ -235,7 +236,7 @@ def show(
         )
     envelope = success_envelope(
         "show", report.model_dump(mode="json"),
-        version="0.5.0", start_time=start)
+        version="0.6.0", start_time=start)
 
     def render_text():
         console.print(render_markdown(report))
@@ -300,7 +301,7 @@ def badge(
         "badge",
         {"audit_id": audit_id, "format": format_, "rendered": rendered,
          "score": report.overall_score, "grade": report.grade},
-        version="0.5.0", start_time=start,
+        version="0.6.0", start_time=start,
     )
 
     def render_text():
@@ -308,6 +309,57 @@ def badge(
             console.print_json(data=rendered)
         else:
             console.print(rendered)
+
+    _emit_or_render(envelope, output, render_text)
+
+
+@app.command()
+@acli_command(
+    examples=[
+        ("Show HN candidates from front page", "oss-audit suggest"),
+        ("Recent Show HN posts as JSON", "oss-audit suggest --source showstories --output json"),
+    ],
+    idempotent=True,
+    see_also=["audit"],
+)
+def suggest(
+    source: str = typer.Option(
+        "topstories", "--source",
+        help="HN feed: topstories | newstories | beststories | showstories. type:string"),
+    limit: int = typer.Option(20, "--limit", "-n", help="Max candidates. type:int"),
+    scan: int = typer.Option(60, "--scan", help="Items HN to inspect. type:int"),
+    output: OutputFormat = typer.Option(
+        OutputFormat.text, help="Output format. type:enum[text|json|table]"),
+) -> None:
+    """Sugiere candidatos para auditar desde fuentes externas (HN hoy)."""
+    start = time.time()
+    try:
+        candidates = fetch_hn_candidates(source=source, limit=limit, scan=scan)
+    except (ValueError, RuntimeError) as e:
+        raise UpstreamError(f"No se pudo traer candidatos de HN: {e}")
+
+    data = {
+        "source": f"hn:{source}",
+        "count": len(candidates),
+        "candidates": [c.to_dict() for c in candidates],
+    }
+    envelope = success_envelope(
+        "suggest", data, version="0.6.0", start_time=start)
+
+    def render_text():
+        if not candidates:
+            console.print("[yellow]Sin candidatos de GitHub/gist en este feed.[/yellow]")
+            return
+        table = Table(title=f"Candidatos desde HN/{source}")
+        table.add_column("Pts", justify="right")
+        table.add_column("Comments", justify="right")
+        table.add_column("Repo")
+        table.add_column("Title")
+        for c in candidates:
+            table.add_row(str(c.points), str(c.comments), c.url, c.title[:60])
+        console.print(table)
+        console.print()
+        console.print("[dim]Auditá con: oss-audit audit <URL>[/dim]")
 
     _emit_or_render(envelope, output, render_text)
 
