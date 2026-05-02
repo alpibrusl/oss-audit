@@ -53,6 +53,13 @@ def render_markdown(report: AuditReport) -> str:
         lines.append(f"**LOC totales:** {r.repo.total_loc:,} en {r.repo.total_files} archivos")
         lines.append("")
 
+    # Tipo de artefacto
+    if r.repo.repo_type == "proposal":
+        lines.append(f"**Tipo de artefacto:** `proposal` — {r.repo.repo_type_reason}")
+        lines.append("> En modo proposal el artefacto es el spec/idea, no el código. "
+                     "El pilar técnico se omite y el peso se redistribuye.")
+        lines.append("")
+
     # --- Top recomendaciones ---
     if r.top_recommendations:
         lines.append("## Top recomendaciones")
@@ -70,11 +77,20 @@ def render_markdown(report: AuditReport) -> str:
     lines.append("| Métrica | Valor |")
     lines.append("|---------|-------|")
     lines.append(f"| Tests detectados | {'Sí' if t.has_tests else 'No'} |")
+    lines.append(f"| Densidad de tests | {t.test_density:.2f} (test_files / source_files) |")
+    lines.append(f"| Fuzz tests | {'Sí' if t.has_fuzz_tests else 'No'} |")
+    lines.append(f"| Property tests | {'Sí' if t.has_property_tests else 'No'} |")
     lines.append(f"| CI configurado | {'Sí' if t.has_ci else 'No'} |")
     lines.append(f"| Secretos encontrados | {t.secrets_found} |")
     lines.append(f"| Vulnerabilidades en deps | {t.vulnerabilities} |")
     lines.append(f"| Lint issues | {t.lint_issues} |")
+    lines.append(f"| Composabilidad | {t.composability_score}/10 |")
     lines.append("")
+    if t.composability_surfaces:
+        lines.append("**Superficies de composabilidad detectadas:**")
+        for s in t.composability_surfaces:
+            lines.append(f"- {s}")
+        lines.append("")
     if t.tools_run:
         lines.append("**Herramientas ejecutadas:** " + ", ".join(t.tools_run))
         lines.append("")
@@ -144,6 +160,7 @@ def render_markdown(report: AuditReport) -> str:
     lines.append(f"| Bus factor (top 1) | {c.bus_factor_top1_pct:.1f}% |")
     lines.append(f"| Bus factor (top 3) | {c.bus_factor_top3_pct:.1f}% |")
     lines.append(f"| Commits últimos 90d | {c.commits_last_90d} |")
+    lines.append(f"| Commits / autor (90d) | {c.commits_per_author_90d:.1f} |")
     if c.last_commit_days_ago is not None:
         lines.append(f"| Último commit | hace {c.last_commit_days_ago} días |")
     if c.avg_issue_close_days is not None:
@@ -167,5 +184,5 @@ def render_markdown(report: AuditReport) -> str:
         lines.append("")
 
     lines.append("---")
-    lines.append(f"_Generado por OSS Auditor v0.3.0_")
+    lines.append(f"_Generado por OSS Auditor v0.4.0_")
     return "\n".join(lines)

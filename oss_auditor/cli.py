@@ -29,7 +29,7 @@ load_dotenv()
 
 app = ACLIApp(
     name="oss-audit",
-    version="0.3.0",
+    version="0.4.0",
     help="Auditoría integral de proyectos open-source: técnico + negocio + comunidad.",
 )
 console = Console()
@@ -141,7 +141,7 @@ def audit(
         data["report_file"] = str(out_file)
 
     envelope = success_envelope(
-        "audit", data, version="0.3.0", start_time=start)
+        "audit", data, version="0.4.0", start_time=start)
 
     def render_text():
         _render_audit_summary(report)
@@ -172,7 +172,7 @@ def list_cmd(
     audits = list_audits(limit=limit)
     envelope = success_envelope(
         "list", {"audits": audits, "count": len(audits)},
-        version="0.3.0", start_time=start)
+        version="0.4.0", start_time=start)
 
     def render_text():
         if not audits:
@@ -218,7 +218,7 @@ def show(
         )
     envelope = success_envelope(
         "show", report.model_dump(mode="json"),
-        version="0.3.0", start_time=start)
+        version="0.4.0", start_time=start)
 
     def render_text():
         console.print(render_markdown(report))
@@ -283,7 +283,7 @@ def badge(
         "badge",
         {"audit_id": audit_id, "format": format_, "rendered": rendered,
          "score": report.overall_score, "grade": report.grade},
-        version="0.3.0", start_time=start,
+        version="0.4.0", start_time=start,
     )
 
     def render_text():

@@ -50,22 +50,85 @@ def detect_ci(repo_path: Path) -> tuple[bool, list[str]]:
     return bool(ci_files), ci_files
 
 
-def detect_tests(repo_path: Path) -> tuple[bool, int]:
-    """Heurística para detectar tests: archivos/dirs con 'test' en el nombre."""
+def detect_tests(repo_path: Path) -> tuple[bool, int, int]:
+    """Cuenta archivos de test y archivos de código fuente.
+
+    Devuelve (has_tests, test_file_count, source_file_count).
+    """
     test_files = 0
+    source_files = 0
+    code_exts = {".py", ".js", ".jsx", ".ts", ".tsx", ".rs", ".go",
+                 ".java", ".kt", ".rb", ".php", ".cs", ".cpp", ".c", ".h",
+                 ".swift"}
     for root, dirs, files in os.walk(repo_path):
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
         rel_root = Path(root).relative_to(repo_path)
         path_str = str(rel_root).lower()
-        in_test_dir = any(p in path_str for p in ("test", "spec", "__tests__"))
+        in_test_dir = any(p in path_str for p in ("test", "spec", "__tests__", "fuzz"))
         for f in files:
             fl = f.lower()
-            if in_test_dir or fl.startswith("test_") or fl.endswith("_test.py") \
-               or fl.endswith(".test.js") or fl.endswith(".spec.js") \
-               or fl.endswith(".test.ts") or fl.endswith("_test.go") \
-               or fl.endswith("_test.rs"):
+            ext = Path(f).suffix.lower()
+            is_test = (in_test_dir or fl.startswith("test_")
+                       or fl.endswith("_test.py") or fl.endswith(".test.js")
+                       or fl.endswith(".spec.js") or fl.endswith(".test.ts")
+                       or fl.endswith("_test.go") or fl.endswith("_test.rs"))
+            if is_test:
                 test_files += 1
-    return test_files > 0, test_files
+            elif ext in code_exts:
+                source_files += 1
+    return test_files > 0, test_files, source_files
+
+
+# Heurísticas para detección de fuzz / property tests.
+FUZZ_MARKERS = {
+    "files_dirs": [
+        ".github/workflows/fuzz.yml", ".github/workflows/fuzz.yaml",
+        "fuzz/", "fuzz_targets/", ".fuzz/",
+    ],
+    "deps_substrings": [
+        "cargo-fuzz", "afl", "libfuzzer", "honggfuzz", "atheris",
+        "go-fuzz", "jazzer", "jqf-fuzz",
+    ],
+}
+
+PROPERTY_MARKERS = {
+    "deps_substrings": [
+        "proptest", "quickcheck", "hypothesis", "fast-check",
+        "scalacheck", "stream_data", "test.check",
+    ],
+}
+
+
+def _read_manifests(repo_path: Path) -> str:
+    """Concatena el contenido de manifests para grep barato."""
+    blob = []
+    for name in ("Cargo.toml", "Cargo.lock", "pyproject.toml",
+                 "requirements.txt", "package.json", "package-lock.json",
+                 "go.mod", "go.sum", "build.gradle", "pom.xml", "Gemfile"):
+        p = repo_path / name
+        if p.is_file():
+            try:
+                blob.append(p.read_text(encoding="utf-8", errors="ignore"))
+            except OSError:
+                pass
+    return "\n".join(blob).lower()
+
+
+def detect_fuzz_tests(repo_path: Path) -> bool:
+    for entry in FUZZ_MARKERS["files_dirs"]:
+        p = repo_path / entry.rstrip("/")
+        if entry.endswith("/"):
+            if p.is_dir():
+                return True
+        elif p.exists():
+            return True
+    blob = _read_manifests(repo_path)
+    return any(s in blob for s in FUZZ_MARKERS["deps_substrings"])
+
+
+def detect_property_tests(repo_path: Path) -> bool:
+    blob = _read_manifests(repo_path)
+    return any(s in blob for s in PROPERTY_MARKERS["deps_substrings"])
 
 
 def scan_secrets(repo_path: Path) -> tuple[int, list[Finding]]:
@@ -174,7 +237,10 @@ def detect_license(repo_path: Path) -> str | None:
 def universal_checks(repo_path: Path) -> dict[str, Any]:
     """Ejecuta todos los chequeos universales."""
     has_ci, ci_files = detect_ci(repo_path)
-    has_tests, test_files = detect_tests(repo_path)
+    has_tests, test_files, source_files = detect_tests(repo_path)
+    test_density = (test_files / source_files) if source_files else 0.0
+    has_fuzz = detect_fuzz_tests(repo_path)
+    has_property = detect_property_tests(repo_path)
     secrets_count, secret_findings = scan_secrets(repo_path)
     has_security_policy = detect_security_md(repo_path)
     license_type = detect_license(repo_path)
@@ -184,6 +250,10 @@ def universal_checks(repo_path: Path) -> dict[str, Any]:
         "ci_files": ci_files,
         "has_tests": has_tests,
         "test_file_count": test_files,
+        "source_file_count": source_files,
+        "test_density": round(test_density, 3),
+        "has_fuzz_tests": has_fuzz,
+        "has_property_tests": has_property,
         "secrets_count": secrets_count,
         "secret_findings": secret_findings,
         "has_security_policy": has_security_policy,

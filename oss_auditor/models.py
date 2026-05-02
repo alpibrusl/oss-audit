@@ -11,6 +11,7 @@ class RepoMeta(BaseModel):
     """Metadatos básicos del repo auditado."""
     source: str  # URL o path local
     is_remote: bool
+    is_gist: bool = False
     owner: str | None = None
     name: str
     local_path: str
@@ -18,6 +19,8 @@ class RepoMeta(BaseModel):
     primary_language: str | None = None
     total_files: int = 0
     total_loc: int = 0
+    repo_type: Literal["implementation", "proposal"] = "implementation"
+    repo_type_reason: str = ""
 
 
 class Finding(BaseModel):
@@ -36,10 +39,15 @@ class TechnicalReport(BaseModel):
     test_coverage: float | None = None
     has_ci: bool = False
     has_tests: bool = False
+    test_density: float = 0.0  # test_files / source_files
+    has_fuzz_tests: bool = False
+    has_property_tests: bool = False
     secrets_found: int = 0
     vulnerabilities: int = 0
     lint_issues: int = 0
     complexity_avg: float | None = None
+    composability_score: int = 0  # 0-10
+    composability_surfaces: list[str] = Field(default_factory=list)
     tools_run: list[str] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)
     raw: dict[str, Any] = Field(default_factory=dict)
@@ -79,6 +87,7 @@ class CommunityReport(BaseModel):
     agent_readiness_score: int = 0  # 0-10, see community/agent_readiness.py
     agent_readiness_signals: list[str] = Field(default_factory=list)
     is_solo_active: bool = False  # solo author + recent commits → not abandoned
+    commits_per_author_90d: float = 0.0  # velocity-per-author (AI-era signal)
     findings: list[Finding] = Field(default_factory=list)
 
 

@@ -152,19 +152,30 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
     else:
         score += max(stars, 0)
 
-    # Velocity (commits últimos 90d): 30
+    # Velocity (commits últimos 90d): 25
     if commits_90d >= 50:
-        score += 30
+        score += 25
     elif commits_90d >= 15:
-        score += 22
+        score += 18
     elif commits_90d >= 3:
-        score += 12
+        score += 10
     elif commits_90d == 0:
         findings.append(Finding(
             severity="medium", category="community",
             title="Sin commits en los últimos 90 días",
             detail="Proyecto inactivo; señal de posible abandono.",
         ))
+
+    # Velocity-per-author (señal AI-era: solo+IA enviando mucho): 5
+    # active_contributors ~ contributors_count (aproximación; los devs que
+    # solo aparecen una vez también cuentan). 0 si no hay datos.
+    cpa_90d = commits_90d / max(contributors_count, 1) if contributors_count else 0.0
+    if cpa_90d >= 30:
+        score += 5
+    elif cpa_90d >= 15:
+        score += 3
+    elif cpa_90d >= 5:
+        score += 1
 
     # Recencia: 15
     if last_commit_days is not None:
@@ -237,5 +248,6 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
         agent_readiness_score=ar_score,
         agent_readiness_signals=ar_signals,
         is_solo_active=is_solo_active,
+        commits_per_author_90d=round(cpa_90d, 1),
         findings=findings,
     )

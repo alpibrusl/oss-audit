@@ -9,12 +9,22 @@ WEIGHTS = {"technical": 0.40, "business": 0.35, "community": 0.25}
 
 
 def compute_overall(report: AuditReport) -> tuple[float, str]:
-    """Calcula score total y grade."""
-    overall = (
-        report.technical.score * WEIGHTS["technical"]
-        + report.business.score * WEIGHTS["business"]
-        + report.community.score * WEIGHTS["community"]
-    )
+    """Calcula score total y grade.
+
+    Renormaliza pesos sobre los pilares con score > 0. Esto evita que
+    un --skip-* o un tipo `proposal` (sin pilar técnico) penalicen
+    artificialmente el total.
+    """
+    pillars = {
+        "technical": report.technical.score,
+        "business": report.business.score,
+        "community": report.community.score,
+    }
+    active = {k: v for k, v in pillars.items() if v > 0}
+    if not active:
+        return 0.0, "fail"
+    total_weight = sum(WEIGHTS[k] for k in active)
+    overall = sum(score * WEIGHTS[k] for k, score in active.items()) / total_weight
     overall = round(overall, 1)
 
     if overall >= 90:
