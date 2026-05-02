@@ -198,7 +198,7 @@ def _scan_secrets_regex(repo_path: Path) -> tuple[int, list[Finding]]:
                             severity="high",
                             category="security",
                             title=f"Posible secreto: {label}",
-                            detail=f"Patrón coincidente en archivo.",
+                            detail="Patrón coincidente en archivo.",
                             location=f"{fpath.relative_to(repo_path)}:{line_num}",
                             recommendation="Verificar y rotar si es real. Usar variables de entorno.",
                         ))
