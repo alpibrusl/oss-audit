@@ -1,17 +1,17 @@
-# OSS Auditor scoring + verdict, in lex.
+# OSS Auditor scoring + verdict library.
 #
 # Pure functional port of the rubric-critical core:
 #   - oss_auditor/reporter/scorer.py::compute_overall
 #   - oss_auditor/reporter/verdict.py::compute_verdict
 #
-# Everything is effect-free except `main`, which prints to stdout.
-# Local imports between .lex files aren't a thing yet, so the whole
-# POC lives in one module.
+# Types, scoring, and verdict live in one module so every consumer
+# references them through a single alias — works around lex's MVP
+# local-import mangling, which currently treats the same module
+# imported from two paths as two distinct nominal types (per the
+# `diamond_keeps_shared_module_once` test in lex-syntax).
 
-import "std.io"    as io
-import "std.str"   as str
-import "std.int"   as int
 import "std.float" as float
+import "std.int"   as int
 
 
 # ---- types -----------------------------------------------------
@@ -21,98 +21,52 @@ type Grade      = Platinum | Gold | Silver | Bronze | Fail
 type Band       = Low | Medium | High | NA
 type RepoType   = Implementation | Proposal
 
-# Field order in type defs must match what lex's inference normalizes
-# record literals to (alphabetical), otherwise the type checker rejects
-# `{ ... } :: NominalType` shaped values.
 
 type Technical = {
-  data_status :: DataStatus,
   score       :: Float,
+  data_status :: DataStatus,
 }
 
 type Business = {
+  score                     :: Float,
   data_status               :: DataStatus,
+  problem_clarity           :: Float,
   differentiation           :: Float,
-  execution_vs_ambition     :: Float,
   intellectual_contribution :: Float,
   market_signals            :: Float,
-  problem_clarity           :: Float,
-  score                     :: Float,
+  execution_vs_ambition     :: Float,
 }
 
 type Community = {
-  data_status :: DataStatus,
   score       :: Float,
+  data_status :: DataStatus,
 }
 
 type Report = {
-  business  :: Business,
-  community :: Community,
   repo_type :: RepoType,
   technical :: Technical,
+  business  :: Business,
+  community :: Community,
 }
 
 type Verdict = {
   code           :: Str,
-  execution_band :: Band,
-  idea_band      :: Band,
   label          :: Str,
   one_liner      :: Str,
+  idea_band      :: Band,
+  execution_band :: Band,
   relevance_band :: Band,
 }
 
 type Bands = {
-  execution :: Band,
   idea      :: Band,
+  execution :: Band,
   relevance :: Band,
 }
 
 type Outcome = {
-  grade :: Grade,
   score :: Float,
-}
-
-
-# ---- constructors ----------------------------------------------
-# Lex coerces anonymous record literals to nominal types only at
-# function-return boundaries. Wrapping each literal in a `mk_*`
-# function makes the coercion explicit and reusable.
-
-fn mk_technical(score :: Float, ds :: DataStatus) -> Technical {
-  { data_status: ds, score: score }
-}
-
-fn mk_business(
-  score :: Float, ds :: DataStatus,
-  pc :: Float, di :: Float, ic :: Float, ms :: Float, eva :: Float
-) -> Business {
-  {
-    data_status:               ds,
-    differentiation:           di,
-    execution_vs_ambition:     eva,
-    intellectual_contribution: ic,
-    market_signals:            ms,
-    problem_clarity:           pc,
-    score:                     score,
-  }
-}
-
-fn mk_community(score :: Float, ds :: DataStatus) -> Community {
-  { data_status: ds, score: score }
-}
-
-fn mk_report(
-  rt :: RepoType, t :: Technical, b :: Business, c :: Community
-) -> Report {
-  { business: b, community: c, repo_type: rt, technical: t }
-}
-
-fn mk_bands(e :: Band, i :: Band, r :: Band) -> Bands {
-  { execution: e, idea: i, relevance: r }
-}
-
-fn mk_outcome(score :: Float, grade :: Grade) -> Outcome {
-  { grade: grade, score: score }
+  grade :: Grade,
 }
 
 
@@ -122,6 +76,7 @@ fn w_technical() -> Float { 0.40 }
 fn w_business()  -> Float { 0.35 }
 fn w_community() -> Float { 0.25 }
 
+
 fn is_available(s :: DataStatus) -> Bool {
   match s { Available => true, _ => false }
 }
@@ -129,6 +84,7 @@ fn is_available(s :: DataStatus) -> Bool {
 fn is_skipped(s :: DataStatus) -> Bool {
   match s { Skipped => true, _ => false }
 }
+
 
 fn skipped_weight(r :: Report) -> Float {
   let t := if is_skipped(r.technical.data_status) { w_technical() } else { 0.0 }
@@ -157,7 +113,8 @@ fn n_available(r :: Report) -> Int {
   t + b + c
 }
 
-# floor(x * 10 + 0.5) / 10 — sidesteps any float.round dependency.
+
+# floor(x * 10 + 0.5) / 10 — sidesteps a float.round dependency.
 fn round1(x :: Float) -> Float {
   int.to_float(float.to_int(x * 10.0 + 0.5)) / 10.0
 }
@@ -181,15 +138,16 @@ fn grade_for(overall :: Float, n :: Int) -> Grade {
   }
 }
 
+
 fn compute_overall(r :: Report) -> Outcome {
   let n := n_available(r)
   if n == 0 {
-    mk_outcome(0.0, Fail)
+    { score: 0.0, grade: Fail }
   } else {
     let denom   := 1.0 - skipped_weight(r)
     let raw     := weighted_sum(r) / denom
     let rounded := round1(raw)
-    mk_outcome(rounded, grade_for(rounded, n))
+    { score: rounded, grade: grade_for(rounded, n) }
   }
 }
 
@@ -202,6 +160,7 @@ fn band_of(score :: Float) -> Band {
     if score >= 40.0 { Medium } else { Low }
   }
 }
+
 
 fn idea_score(r :: Report) -> Float {
   let pc := r.business.problem_clarity
@@ -224,6 +183,7 @@ fn execution_score(r :: Report) -> Float {
 fn relevance_score(r :: Report) -> Float {
   (r.business.market_signals + r.community.score) / 2.0
 }
+
 
 fn idea_has_data(r :: Report) -> Bool {
   is_available(r.business.data_status)
@@ -252,13 +212,14 @@ fn axes_with_data(r :: Report) -> Int {
   i + e + v
 }
 
+
 fn mk(code :: Str, label :: Str, one_liner :: Str, b :: Bands) -> Verdict {
   {
     code:           code,
-    execution_band: b.execution,
-    idea_band:      b.idea,
     label:          label,
     one_liner:      one_liner,
+    idea_band:      b.idea,
+    execution_band: b.execution,
     relevance_band: b.relevance,
   }
 }
@@ -267,58 +228,86 @@ fn pass_verdict(b :: Bands) -> Verdict {
   mk("pass", "Pass", "Not enough signal on any axis. Pass.", b)
 }
 
-# Encode the band triple as a 3-char string and dispatch on that.
-# Lex doesn't support record-pattern matching on nominal types, but
-# string match is cheap and keeps the table readable.
-fn band_char(b :: Band) -> Str {
-  match b {
-    Low    => "L",
-    Medium => "M",
-    High   => "H",
-    NA     => "_",
+# Verdict matrix as nested matches per axis. Record-pattern matching
+# directly on a nominal type isn't accepted yet (lex emits
+# `expected record, got core.Bands` — the #86 record-coercion fix
+# covers literals/let/args but not destructure patterns).
+fn verdict_high(b :: Bands) -> Verdict {
+  match b.execution {
+    High => match b.relevance {
+      High   => mk("bet-on-it", "Bet on it",
+                   "Good idea, good execution, real demand. Adopt, contribute, or invest.", b),
+      Medium => mk("bet-on-it", "Bet on it",
+                   "Good idea, good execution, growing demand. Adopt or contribute.", b),
+      Low    => mk("ahead-of-its-time", "Ahead of its time",
+                   "Brilliant work without a market yet. Track it; don't bet today.", b),
+      _      => pass_verdict(b),
+    },
+    Low => match b.relevance {
+      High   => mk("worth-helping", "Worth helping",
+                   "Good idea with weak execution and clear demand. Contribute, fork, or fund.", b),
+      Medium => mk("worth-helping", "Worth helping",
+                   "Good idea, early execution. High risk but big upside.", b),
+      _      => pass_verdict(b),
+    },
+    Medium => match b.relevance {
+      Medium => mk("promising-prototype", "Promising prototype",
+                   "Solid idea, execution halfway there. Revisit in 3 months.", b),
+      Low    => mk("promising-prototype", "Promising prototype",
+                   "Good idea executing OK but no visible demand yet.", b),
+      _      => pass_verdict(b),
+    },
+    _ => pass_verdict(b),
+  }
+}
+
+fn verdict_low(b :: Bands) -> Verdict {
+  match b.execution {
+    High => match b.relevance {
+      High   => mk("solid-commodity", "Solid commodity",
+                   "Real problem, good execution, no differentiation. Adopt if needed; no upside.", b),
+      Medium => mk("solid-commodity", "Solid commodity",
+                   "Good execution of a known problem. Useful, not novel.", b),
+      Low    => mk("skill-in-search", "Skill in search of a problem",
+                   "Strong builder solving an irrelevant problem. Talent reusable; project isn't.", b),
+      _      => pass_verdict(b),
+    },
+    _ => pass_verdict(b),
+  }
+}
+
+fn verdict_medium(b :: Bands) -> Verdict {
+  match b.execution {
+    Low => match b.relevance {
+      Low => mk("incomplete-thesis", "Incomplete thesis",
+                "Not enough signal. Come back when there's more code or traction.", b),
+      _   => pass_verdict(b),
+    },
+    Medium => match b.relevance {
+      Medium => mk("promising-prototype", "Promising prototype",
+                   "Everything halfway. If you like the space, it's worth following.", b),
+      _      => pass_verdict(b),
+    },
+    _ => pass_verdict(b),
   }
 }
 
 fn verdict_for(b :: Bands) -> Verdict {
-  let key := str.concat(
-    str.concat(band_char(b.idea), band_char(b.execution)),
-    band_char(b.relevance)
-  )
-  match key {
-    "HHH" => mk("bet-on-it", "Bet on it",
-                "Good idea, good execution, real demand. Adopt, contribute, or invest.", b),
-    "HHM" => mk("bet-on-it", "Bet on it",
-                "Good idea, good execution, growing demand. Adopt or contribute.", b),
-    "HLH" => mk("worth-helping", "Worth helping",
-                "Good idea with weak execution and clear demand. Contribute, fork, or fund.", b),
-    "HLM" => mk("worth-helping", "Worth helping",
-                "Good idea, early execution. High risk but big upside.", b),
-    "HMM" => mk("promising-prototype", "Promising prototype",
-                "Solid idea, execution halfway there. Revisit in 3 months.", b),
-    "HML" => mk("promising-prototype", "Promising prototype",
-                "Good idea executing OK but no visible demand yet.", b),
-    "HHL" => mk("ahead-of-its-time", "Ahead of its time",
-                "Brilliant work without a market yet. Track it; don't bet today.", b),
-    "LHH" => mk("solid-commodity", "Solid commodity",
-                "Real problem, good execution, no differentiation. Adopt if needed; no upside.", b),
-    "LHM" => mk("solid-commodity", "Solid commodity",
-                "Good execution of a known problem. Useful, not novel.", b),
-    "LHL" => mk("skill-in-search", "Skill in search of a problem",
-                "Strong builder solving an irrelevant problem. Talent reusable; project isn't.", b),
-    "MLL" => mk("incomplete-thesis", "Incomplete thesis",
-                "Not enough signal. Come back when there's more code or traction.", b),
-    "MMM" => mk("promising-prototype", "Promising prototype",
-                "Everything halfway. If you like the space, it's worth following.", b),
-    _     => pass_verdict(b),
+  match b.idea {
+    High   => verdict_high(b),
+    Low    => verdict_low(b),
+    Medium => verdict_medium(b),
+    NA     => pass_verdict(b),
   }
 }
 
+
 fn compute_verdict(r :: Report) -> Verdict {
-  let bands := mk_bands(
-    band_or_na(execution_has_data(r), execution_score(r)),
-    band_or_na(idea_has_data(r),      idea_score(r)),
-    band_or_na(relevance_has_data(r), relevance_score(r))
-  )
+  let bands := {
+    idea:      band_or_na(idea_has_data(r),      idea_score(r)),
+    execution: band_or_na(execution_has_data(r), execution_score(r)),
+    relevance: band_or_na(relevance_has_data(r), relevance_score(r)),
+  }
   if axes_with_data(r) < 2 {
     mk("indeterminate", "Indeterminate",
        "Missing data on at least 2 of the 3 axes (idea / execution / relevance). Verdict suspended until there's more signal.",
@@ -326,82 +315,4 @@ fn compute_verdict(r :: Report) -> Verdict {
   } else {
     verdict_for(bands)
   }
-}
-
-
-# ---- demo runner -----------------------------------------------
-
-fn band_label(b :: Band) -> Str {
-  match b {
-    High   => "high",
-    Medium => "medium",
-    Low    => "low",
-    NA     => "n/a",
-  }
-}
-
-fn grade_label(g :: Grade) -> Str {
-  match g {
-    Platinum => "platinum",
-    Gold     => "gold",
-    Silver   => "silver",
-    Bronze   => "bronze",
-    Fail     => "fail",
-  }
-}
-
-fn make_business(score :: Float, status :: DataStatus) -> Business {
-  mk_business(score, status, 80.0, 80.0, 80.0, 80.0, 80.0)
-}
-
-fn make_report(
-  tech_score :: Float, tech :: DataStatus,
-  biz_score  :: Float, biz  :: DataStatus,
-  com_score  :: Float, com  :: DataStatus
-) -> Report {
-  mk_report(
-    Implementation,
-    mk_technical(tech_score, tech),
-    make_business(biz_score, biz),
-    mk_community(com_score, com)
-  )
-}
-
-fn line(name :: Str, r :: Report) -> Str {
-  let out := compute_overall(r)
-  let v   := compute_verdict(r)
-  str.join(
-    [
-      name, " | score=", float.to_str(out.score),
-      " grade=", grade_label(out.grade),
-      " verdict=", v.code,
-      " bands=(idea=", band_label(v.idea_band),
-      ", exec=", band_label(v.execution_band),
-      ", rel=", band_label(v.relevance_band), ")"
-    ],
-    ""
-  )
-}
-
-fn main() -> [io] Nil {
-  # Polars-style: technical alone, others skipped → bronze, indeterminate.
-  io.print(line(
-    "only-technical",
-    make_report(90.0, Available, 0.0, Skipped, 0.0, Skipped)
-  ))
-  # Tech + business, community skipped: 2 axes available.
-  io.print(line(
-    "tech+business",
-    make_report(90.0, Available, 85.0, Available, 0.0, Skipped)
-  ))
-  # All three available, all hot → bet-on-it / gold.
-  io.print(line(
-    "full-3-axes",
-    make_report(90.0, Available, 85.0, Available, 80.0, Available)
-  ))
-  # Business attempted but unavailable: penalty applies, not renormalized.
-  io.print(line(
-    "biz-unavailable",
-    make_report(90.0, Available, 0.0, Unavailable, 80.0, Available)
-  ))
 }
