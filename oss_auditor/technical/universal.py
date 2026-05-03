@@ -1,4 +1,4 @@
-"""Análisis técnico universal — independiente del lenguaje."""
+"""Universal technical analysis — language-independent."""
 from __future__ import annotations
 
 import json
@@ -11,7 +11,7 @@ from typing import Any
 
 from ..models import Finding
 
-# Patrones de secretos comunes (fallback si gitleaks no está instalado)
+# Common secret patterns (fallback when gitleaks isn't installed)
 SECRET_PATTERNS = [
     (r"(?i)aws_secret_access_key\s*[:=]\s*['\"]?([A-Za-z0-9/+=]{40})['\"]?", "AWS Secret Key"),
     (r"AKIA[0-9A-Z]{16}", "AWS Access Key ID"),
@@ -37,7 +37,7 @@ def has_command(cmd: str) -> bool:
 
 
 def detect_ci(repo_path: Path) -> tuple[bool, list[str]]:
-    """Detecta presencia de CI configurada."""
+    """Detect whether CI is configured."""
     ci_files = []
     if (repo_path / ".github" / "workflows").is_dir():
         wf = list((repo_path / ".github" / "workflows").glob("*.y*ml"))
@@ -51,9 +51,9 @@ def detect_ci(repo_path: Path) -> tuple[bool, list[str]]:
 
 
 def detect_tests(repo_path: Path) -> tuple[bool, int, int]:
-    """Cuenta archivos de test y archivos de código fuente.
+    """Count test files and source-code files.
 
-    Devuelve (has_tests, test_file_count, source_file_count).
+    Returns (has_tests, test_file_count, source_file_count).
     """
     test_files = 0
     source_files = 0
@@ -79,7 +79,7 @@ def detect_tests(repo_path: Path) -> tuple[bool, int, int]:
     return test_files > 0, test_files, source_files
 
 
-# Heurísticas para detección de fuzz / property tests.
+# Heuristics for detecting fuzz / property tests.
 FUZZ_MARKERS = {
     "files_dirs": [
         ".github/workflows/fuzz.yml", ".github/workflows/fuzz.yaml",
@@ -100,7 +100,7 @@ PROPERTY_MARKERS = {
 
 
 def _read_manifests(repo_path: Path) -> str:
-    """Concatena el contenido de manifests para grep barato."""
+    """Concatenate manifest contents for a cheap grep."""
     blob = []
     for name in ("Cargo.toml", "Cargo.lock", "pyproject.toml",
                  "requirements.txt", "package.json", "package-lock.json",
@@ -132,7 +132,7 @@ def detect_property_tests(repo_path: Path) -> bool:
 
 
 def scan_secrets(repo_path: Path) -> tuple[int, list[Finding]]:
-    """Escanea secretos. Usa gitleaks si está disponible; si no, regex propio."""
+    """Scan for secrets. Uses gitleaks if available, otherwise our own regex."""
     if has_command("gitleaks"):
         return _scan_secrets_gitleaks(repo_path)
     return _scan_secrets_regex(repo_path)
@@ -145,7 +145,7 @@ def _scan_secrets_gitleaks(repo_path: Path) -> tuple[int, list[Finding]]:
              "--report-path", "/dev/stdout", "--no-banner", "--exit-code", "0"],
             capture_output=True, text=True, timeout=120,
         )
-        # gitleaks emite JSONLines o un array según versión
+        # gitleaks emits JSONLines or an array depending on version
         findings_raw = []
         for line in result.stdout.strip().split("\n"):
             line = line.strip()
@@ -164,10 +164,10 @@ def _scan_secrets_gitleaks(repo_path: Path) -> tuple[int, list[Finding]]:
             findings.append(Finding(
                 severity="high",
                 category="security",
-                title=f"Secret detectado: {item.get('Description', item.get('RuleID', 'unknown'))}",
-                detail=f"Tipo: {item.get('RuleID', 'n/a')}",
+                title=f"Secret detected: {item.get('Description', item.get('RuleID', 'unknown'))}",
+                detail=f"Type: {item.get('RuleID', 'n/a')}",
                 location=f"{item.get('File', '?')}:{item.get('StartLine', '?')}",
-                recommendation="Rotar inmediatamente y eliminar del historial git.",
+                recommendation="Rotate immediately and remove from the git history.",
             ))
         return len(findings_raw), findings
     except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
@@ -186,7 +186,7 @@ def _scan_secrets_regex(repo_path: Path) -> tuple[int, list[Finding]]:
             fpath = Path(root) / f
             try:
                 with open(fpath, "r", encoding="utf-8", errors="ignore") as fh:
-                    content = fh.read(500_000)  # cap por archivo
+                    content = fh.read(500_000)  # per-file cap
             except OSError:
                 continue
             for pattern, label in SECRET_PATTERNS:
@@ -197,10 +197,10 @@ def _scan_secrets_regex(repo_path: Path) -> tuple[int, list[Finding]]:
                         findings.append(Finding(
                             severity="high",
                             category="security",
-                            title=f"Posible secreto: {label}",
-                            detail="Patrón coincidente en archivo.",
+                            title=f"Possible secret: {label}",
+                            detail="Pattern matched in the file.",
                             location=f"{fpath.relative_to(repo_path)}:{line_num}",
-                            recommendation="Verificar y rotar si es real. Usar variables de entorno.",
+                            recommendation="Verify and rotate if it's real. Use environment variables.",
                         ))
     return count, findings
 
@@ -216,7 +216,7 @@ def detect_license(repo_path: Path) -> str | None:
         if f.exists():
             try:
                 content = f.read_text(encoding="utf-8", errors="ignore")[:500]
-                # detección simple
+                # simple detection
                 upper = content.upper()
                 if "MIT LICENSE" in upper or "MIT " in upper[:200]:
                     return "MIT"
@@ -235,7 +235,7 @@ def detect_license(repo_path: Path) -> str | None:
 
 
 def universal_checks(repo_path: Path) -> dict[str, Any]:
-    """Ejecuta todos los chequeos universales."""
+    """Run all the universal checks."""
     has_ci, ci_files = detect_ci(repo_path)
     has_tests, test_files, source_files = detect_tests(repo_path)
     test_density = (test_files / source_files) if source_files else 0.0

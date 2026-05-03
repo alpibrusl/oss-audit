@@ -1,7 +1,7 @@
-"""Sugerir candidatos para auditar desde fuentes externas (HN, etc).
+"""Suggest audit candidates from external sources (HN, etc.).
 
-Hoy: front page + Show HN de Hacker News, filtrando posts que linkean
-a repos de GitHub o gists. Devuelve URLs ordenadas por puntos.
+For now: Hacker News front page + Show HN, filtering posts that link
+to GitHub repos or gists. Returns URLs sorted by points.
 """
 from __future__ import annotations
 
@@ -34,13 +34,13 @@ class Candidate:
 
 
 def _extract_gh_url(item: dict) -> str | None:
-    """Devuelve la primera URL de GitHub/gist que aparezca en la URL del post o el texto."""
+    """Return the first GitHub/gist URL that appears in the post URL or text."""
     for field in ("url", "text"):
         v = item.get(field) or ""
         m = GH_URL_RE.search(v)
         if m:
             url = m.group(0).rstrip(".,;)\"'")
-            # Filtra URLs que no apunten a un repo (e.g. github.com/sponsors/x)
+            # Filter URLs that don't point to a repo (e.g. github.com/sponsors/x)
             parts = url.replace("https://", "").replace("http://", "").split("/")
             if len(parts) >= 3 and parts[0] in ("github.com", "gist.github.com", "www.github.com"):
                 return url
@@ -51,11 +51,11 @@ def fetch_hn_candidates(
     source: str = "topstories", limit: int = 30, scan: int = 60,
 ) -> list[Candidate]:
     """source: topstories | newstories | beststories | showstories.
-    `scan` = cuántos items inspeccionar (HN devuelve hasta 500 IDs por feed).
+    `scan` = how many items to inspect (HN returns up to 500 IDs per feed).
     """
     valid_sources = {"topstories", "newstories", "beststories", "showstories"}
     if source not in valid_sources:
-        raise ValueError(f"source debe ser uno de {valid_sources}")
+        raise ValueError(f"source must be one of {valid_sources}")
 
     with httpx.Client(timeout=15.0) as client:
         try:
@@ -63,11 +63,11 @@ def fetch_hn_candidates(
             if r.status_code != 200:
                 raise RuntimeError(
                     f"HN API status {r.status_code}: {r.text[:200]} "
-                    f"(¿egress a hacker-news.firebaseio.com bloqueado?)"
+                    f"(is egress to hacker-news.firebaseio.com blocked?)"
                 )
             ids = r.json()
         except httpx.HTTPError as e:
-            raise RuntimeError(f"HN API no respondió: {e}")
+            raise RuntimeError(f"HN API didn't respond: {e}")
         out: list[Candidate] = []
         for hn_id in ids[:scan]:
             try:

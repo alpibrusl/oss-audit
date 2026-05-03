@@ -1,14 +1,14 @@
-"""Detecta "superficie de composabilidad": qué tantas formas tiene el repo
-para ser combinado con otros sistemas.
+"""Detect "composability surface": how many ways the repo can combine
+with other systems.
 
-En la era post-LLM, los proyectos que se combinan bien (CLI + library +
-MCP + workspace de crates) tienen más palanca que los monolitos. Cada
-superficie suma 2 puntos, hasta 10.
+In the post-LLM era, projects that combine cleanly (CLI + library +
+MCP + multi-crate workspace) have more leverage than monoliths. Each
+surface adds 2 points, up to 10.
 
-Categorías:
-- CLI (binario / entrypoint)
-- Library / API pública (lib.rs, __init__ exportado, package.json main)
-- MCP server (manifest mcp.json o .mcp/)
+Categories:
+- CLI (binary / entrypoint)
+- Library / public API (lib.rs, exported __init__, package.json main)
+- MCP server (mcp.json manifest or .mcp/)
 - HTTP / REST server (FastAPI, axum, express, ...)
 - Workspace / multi-crate / monorepo
 """
@@ -156,7 +156,7 @@ MONOREPO_SUBDIRS = ("crates", "packages", "sdks", "apps", "services", "modules")
 
 
 def _candidate_roots(repo_path: Path) -> list[Path]:
-    """Devuelve roots a inspeccionar: el repo + un nivel dentro de monorepos típicos."""
+    """Return roots to inspect: the repo + one level inside typical monorepos."""
     roots = [repo_path]
     for sub in MONOREPO_SUBDIRS:
         d = repo_path / sub
@@ -168,11 +168,11 @@ def _candidate_roots(repo_path: Path) -> list[Path]:
 
 
 def score_composability(repo_path: Path) -> tuple[int, list[str]]:
-    """Devuelve (score 0-10, lista de superficies detectadas).
+    """Return (score 0-10, list of detected surfaces).
 
-    Inspecciona el root + un nivel dentro de directorios típicos de
-    monorepo (crates/, sdks/, packages/, ...) para no perder señales
-    en proyectos polilingües o multi-paquete.
+    Inspects the root plus one level inside typical monorepo
+    directories (crates/, sdks/, packages/, ...) so we don't miss
+    signals in polyglot or multi-package projects.
     """
     surfaces: list[str] = []
     seen_categories: set[int] = set()
@@ -183,7 +183,7 @@ def score_composability(repo_path: Path) -> tuple[int, list[str]]:
                 continue
             s = detector(root)
             if s:
-                # Para roots no-raíz, prefijar con el path relativo.
+                # For non-root roots, prefix with the relative path.
                 if root != repo_path:
                     try:
                         rel = root.relative_to(repo_path)

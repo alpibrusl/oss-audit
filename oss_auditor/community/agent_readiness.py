@@ -1,26 +1,26 @@
-"""Detecta señales de "agent-readiness": qué tan preparado está el repo
-para ser descubierto y operado por agentes de IA.
+"""Detect "agent-readiness" signals: how well-prepared the repo is to
+be discovered and operated by AI agents.
 
-En la era post-LLM, un proyecto solo-autor puede ser excelente; lo que
-distingue a uno serio es si está diseñado para que humanos *y agentes*
-lo encuentren, lo entiendan y lo extiendan sin fricción.
+In the post-LLM era a solo-author project can be excellent; what
+distinguishes a serious one is whether it's designed so that humans
+*and agents* can find, understand, and extend it without friction.
 
-Categorías detectadas (2 pts cada una, máx 10):
+Detected categories (2 pts each, max 10):
   - Claude Code context (CLAUDE.md, .claude/)
   - Universal agent context (AGENTS.md)
   - Cursor / Copilot rules
   - ACLI / skill manifests (.cli/, SKILL.md)
   - MCP server manifest (mcp.json, .mcp/)
-  - Examples runables (examples/ con scripts)
+  - Runnable examples (examples/ with scripts)
 
-Filosofía: presencia + contenido no-trivial. Un CLAUDE.md vacío de 5
-bytes no cuenta — pedimos un mínimo de bytes para evitar gaming.
+Philosophy: presence + non-trivial content. An empty 5-byte CLAUDE.md
+doesn't count — we require a minimum byte count to avoid gaming.
 """
 from __future__ import annotations
 
 from pathlib import Path
 
-MIN_BYTES = 200  # umbral mínimo para considerar un archivo "real"
+MIN_BYTES = 200  # minimum threshold to consider a file "real"
 
 
 def _has_real_file(p: Path) -> bool:
@@ -93,7 +93,7 @@ CATEGORIES = (
 
 
 def score_agent_readiness(repo_path: Path) -> tuple[int, list[str]]:
-    """Devuelve (score 0-10, lista de signals detectadas)."""
+    """Return (score 0-10, list of detected signals)."""
     signals: list[str] = []
     for detector in CATEGORIES:
         signal = detector(repo_path)

@@ -1,8 +1,8 @@
-"""Generación de badges shields.io para auditorías.
+"""Shields.io badge generation for audits.
 
-Dos formatos:
+Two formats:
 - Static URL: `https://img.shields.io/badge/oss--audit-92.5/100-brightgreen`
-- Endpoint JSON: para hosting dinámico (raw.githubusercontent.com, gist, etc).
+- Endpoint JSON: for dynamic hosting (raw.githubusercontent.com, gist, etc.).
 """
 from __future__ import annotations
 
@@ -20,16 +20,16 @@ GRADE_COLOR = {
 
 
 def _shields_escape(s: str) -> str:
-    """Escapa para el formato 'badge/<label>-<message>-<color>' de shields.io.
+    """Escape a string for shields.io's 'badge/<label>-<message>-<color>' format.
 
-    Reglas de shields.io: '-' -> '--', '_' -> '__', ' ' -> '_', luego URL-encode.
+    Shields.io rules: '-' -> '--', '_' -> '__', ' ' -> '_', then URL-encode.
     """
     s = s.replace("-", "--").replace("_", "__").replace(" ", "_")
     return quote(s, safe="")
 
 
 def to_shields_url(report: AuditReport, label: str = "oss-audit") -> str:
-    """Devuelve la URL estática shields.io del badge."""
+    """Return the static shields.io URL for the badge."""
     color = GRADE_COLOR.get(report.grade, "lightgrey")
     message = f"{report.overall_score:.1f}/100 {report.grade}"
     return (
@@ -39,9 +39,9 @@ def to_shields_url(report: AuditReport, label: str = "oss-audit") -> str:
 
 
 def to_endpoint_payload(report: AuditReport, label: str = "oss-audit") -> dict:
-    """Devuelve un payload JSON compatible con shields.io endpoint badges.
+    """Return a JSON payload compatible with shields.io endpoint badges.
 
-    Hosting típico: comprometer este JSON al repo y referenciar con
+    Typical hosting: commit this JSON into the repo and reference it via
     `https://img.shields.io/endpoint?url=<raw_url>`.
     """
     return {
@@ -55,7 +55,7 @@ def to_endpoint_payload(report: AuditReport, label: str = "oss-audit") -> dict:
 
 def to_markdown(report: AuditReport, link_url: str | None = None,
                 label: str = "oss-audit") -> str:
-    """Devuelve un snippet markdown listo para pegar en un README."""
+    """Return a Markdown snippet ready to paste into a README."""
     badge_url = to_shields_url(report, label)
     target = link_url or report.repo.source
     return f"[![OSS Audit]({badge_url})]({target})"

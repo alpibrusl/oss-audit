@@ -1,4 +1,4 @@
-"""Almacenamiento de auditorías históricas en SQLite local."""
+"""Local SQLite storage for audit history."""
 from __future__ import annotations
 
 import sqlite3
@@ -34,7 +34,7 @@ def _ensure_db(db_path: Path) -> sqlite3.Connection:
 
 
 def save_audit(report: AuditReport, db_path: Path = DEFAULT_DB) -> int:
-    """Guarda una auditoría. Devuelve el ID asignado."""
+    """Persist an audit. Returns the assigned ID."""
     conn = _ensure_db(db_path)
     cur = conn.execute(
         """INSERT INTO audits (audited_at, source, repo_name, overall_score, grade,

@@ -1,8 +1,8 @@
-"""Runners por lenguaje. Cada uno devuelve un dict normalizado.
+"""Per-language runners. Each one returns a normalized dict.
 
-Filosofía: si la herramienta no está instalada, devolvemos {"available": False}
-en lugar de fallar. El score global penaliza la ausencia de señales pero
-no rompe la auditoría completa.
+Philosophy: if the tool isn't installed we return {"available": False}
+instead of failing. The overall score penalizes the missing signal but
+the entire audit doesn't break.
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from typing import Any
 
 
 def _run(cmd: list[str], cwd: Path | None = None, timeout: int = 180) -> tuple[int, str, str]:
-    """Ejecuta un comando y devuelve (returncode, stdout, stderr) con timeout."""
+    """Run a command and return (returncode, stdout, stderr) with a timeout."""
     try:
         r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
         return r.returncode, r.stdout, r.stderr
@@ -31,13 +31,13 @@ def has(cmd: str) -> bool:
 # ---------- Rust ----------
 
 def run_rust(repo_path: Path) -> dict[str, Any]:
-    """Análisis para proyectos Rust. Detecta Cargo.toml en raíz o workspace."""
+    """Analysis for Rust projects. Detects Cargo.toml at the root or in a workspace."""
     out: dict[str, Any] = {"language": "Rust", "tools": {}}
     if not (repo_path / "Cargo.toml").exists():
         out["skipped"] = "no Cargo.toml found"
         return out
 
-    # cargo audit — vulnerabilidades en dependencias
+    # cargo audit — dependency vulnerabilities
     if has("cargo") and has("cargo-audit"):
         rc, stdout, stderr = _run(["cargo", "audit", "--json"], cwd=repo_path, timeout=120)
         try:
@@ -102,7 +102,7 @@ def run_python(repo_path: Path) -> dict[str, Any]:
         out["skipped"] = "no Python project markers"
         return out
 
-    # ruff — lint rápido y comprehensivo
+    # ruff — fast, comprehensive lint
     if has("ruff"):
         rc, stdout, stderr = _run(["ruff", "check", str(repo_path), "--output-format=json"], timeout=120)
         try:
@@ -117,7 +117,7 @@ def run_python(repo_path: Path) -> dict[str, Any]:
     else:
         out["tools"]["ruff"] = {"available": False, "hint": "pip install ruff"}
 
-    # pip-audit — vulnerabilidades de deps
+    # pip-audit — dependency vulnerabilities
     if has("pip-audit") and (pyproject.exists() or requirements.exists()):
         args = ["pip-audit", "--format", "json"]
         if requirements.exists():
@@ -174,7 +174,7 @@ def run_go(repo_path: Path) -> dict[str, Any]:
 
     if has("govulncheck"):
         rc, stdout, _ = _run(["govulncheck", "-json", "./..."], cwd=repo_path, timeout=180)
-        # govulncheck emite JSONL
+        # govulncheck emits JSONL
         vuln_count = 0
         for line in stdout.split("\n"):
             line = line.strip()
@@ -216,7 +216,7 @@ LANG_RUNNERS = {
 
 
 def run_for_languages(repo_path: Path, languages: dict[str, float]) -> dict[str, Any]:
-    """Ejecuta runners para cada lenguaje presente con >5% de LOC."""
+    """Run runners for each language present with >5% of LOC."""
     results: dict[str, Any] = {}
     seen_runners: set[Any] = set()
     for lang, pct in languages.items():

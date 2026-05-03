@@ -1,13 +1,13 @@
-"""Verdict layer: el "qué hago con esta info" del reporte.
+"""Verdict layer: the "what do I do with this info" of the report.
 
-Tres ejes a partir de los pilares:
+Three axes derived from the pillars:
 - idea = (problem_clarity + differentiation + intellectual_contribution) / 3
 - execution = report.technical.score
 - relevance = (business.market_signals + community.score) / 2
 
-Cada eje cae en {low, medium, high} (umbrales 40 y 70) y la
-combinación elige uno de 8 veredictos. Cada veredicto trae acciones
-concretas para developer / CTO / investor.
+Each axis falls into {low, medium, high} (thresholds 40 and 70) and
+the combination picks one of 8 verdicts. Each verdict ships concrete
+actions for developer / CTO / investor.
 """
 from __future__ import annotations
 
@@ -45,8 +45,8 @@ def _idea_score(report: AuditReport) -> float:
 
 def _execution_score(report: AuditReport) -> float:
     if report.repo.repo_type == "proposal":
-        # En proposal-mode no hay ejecución de código. La "ejecución"
-        # son: claridad del spec + commits del autor (mantenimiento).
+        # In proposal mode there is no code execution. "Execution"
+        # here means: spec clarity + author commits (maintenance).
         return (report.business.execution_vs_ambition + report.community.score) / 2
     return report.technical.score
 
@@ -59,93 +59,93 @@ VERDICTS: dict[tuple[str, str, str], tuple[str, str, str]] = {
     # (idea, execution, relevance) -> (code, label, one_liner)
     ("high", "high", "high"): (
         "bet-on-it", "Bet on it",
-        "Buena idea, buena ejecución, demanda real. Adopta, contribuye o invierte."),
+        "Good idea, good execution, real demand. Adopt, contribute, or invest."),
     ("high", "high", "medium"): (
         "bet-on-it", "Bet on it",
-        "Buena idea, buena ejecución, demanda creciente. Adopta o contribuye."),
+        "Good idea, good execution, growing demand. Adopt or contribute."),
     ("high", "low", "high"): (
         "worth-helping", "Worth helping",
-        "Buena idea con ejecución débil y demanda clara. Aporta, forkea, "
-        "o financia al equipo para cerrar la brecha."),
+        "Good idea with weak execution and clear demand. Contribute, fork, "
+        "or fund the team to close the gap."),
     ("high", "low", "medium"): (
         "worth-helping", "Worth helping",
-        "Buena idea, ejecución incipiente. Riesgo alto pero upside grande."),
+        "Good idea, early execution. High risk but big upside."),
     ("high", "medium", "medium"): (
         "promising-prototype", "Promising prototype",
-        "Idea sólida, ejecución a medio camino. Volver en 3 meses."),
+        "Solid idea, execution halfway there. Revisit in 3 months."),
     ("high", "medium", "low"): (
         "promising-prototype", "Promising prototype",
-        "Buena idea ejecutándose ok pero sin demanda visible aún."),
+        "Good idea executing OK but no visible demand yet."),
     ("high", "high", "low"): (
         "ahead-of-its-time", "Ahead of its time",
-        "Trabajo brillante sin mercado todavía. Sigue de cerca; no apuestes hoy."),
+        "Brilliant work without a market yet. Track it closely; don't bet today."),
     ("low", "high", "high"): (
         "solid-commodity", "Solid commodity",
-        "Resuelve un problema real con buena ejecución, pero sin "
-        "diferenciación. Adopta si lo necesitas; no esperes upside."),
+        "Solves a real problem with good execution but no "
+        "differentiation. Adopt if you need it; don't expect upside."),
     ("low", "high", "medium"): (
         "solid-commodity", "Solid commodity",
-        "Buena ejecución de un problema conocido. Útil, no novedoso."),
+        "Good execution of a known problem. Useful, not novel."),
     ("low", "high", "low"): (
         "skill-in-search", "Skill in search of a problem",
-        "Builder fuerte resolviendo un problema irrelevante. El talento "
-        "podría ser reutilizable; el proyecto no."),
+        "Strong builder solving an irrelevant problem. The talent "
+        "may be reusable; the project isn't."),
     ("medium", "low", "low"): (
         "incomplete-thesis", "Incomplete thesis",
-        "No hay suficiente señal. Vuelve cuando tenga más código o tracción."),
+        "Not enough signal. Come back when there's more code or traction."),
     ("medium", "medium", "medium"): (
         "promising-prototype", "Promising prototype",
-        "Todo a medio camino. Si te gusta el espacio, vale la pena seguirlo."),
+        "Everything halfway. If you like the space, it's worth following."),
 }
 
 
 _DEFAULT = (
     "pass", "Pass",
-    "Sin señales suficientes en ningún eje. Pasar.",
+    "Not enough signal on any axis. Pass.",
 )
 
 _INDETERMINATE = (
     "indeterminate", "Indeterminate",
-    "Faltan datos en al menos 2 de los 3 ejes (idea / ejecución / "
-    "relevancia). Veredicto suspendido hasta tener más señal.",
+    "Missing data on at least 2 of the 3 axes (idea / execution / "
+    "relevance). Verdict suspended until there's more signal.",
 )
 
 
 ACTIONS_TEMPLATE: dict[str, dict[str, str]] = {
     "bet-on-it": {
-        "developer": "Adopta en producción si el caso de uso encaja. Considera contribuir.",
-        "cto": "Adopta o pilota seriamente. Equipo hireable. Stack risk bajo.",
-        "investor": "Fundable. Stage según madurez observable. Riesgo principal: ejecución sostenida.",
+        "developer": "Adopt in production if the use case fits. Consider contributing.",
+        "cto": "Adopt or pilot seriously. Hireable team. Low stack risk.",
+        "investor": "Fundable. Stage to match observable maturity. Main risk: sustained execution.",
     },
     "worth-helping": {
-        "developer": "Vale la pena forkear o aportar PRs. No usar en prod aún.",
-        "cto": "Pilota si el problema es estratégico. Considera contratar al maintainer.",
-        "investor": "Posible inversión talent-first; el equipo > el proyecto actual. Acquihire posible.",
+        "developer": "Worth forking or sending PRs. Don't use in prod yet.",
+        "cto": "Pilot if the problem is strategic. Consider hiring the maintainer.",
+        "investor": "Possible talent-first investment; the team > the current project. Acquihire is plausible.",
     },
     "promising-prototype": {
-        "developer": "Watch. Marca con star, revisa en 3 meses.",
-        "cto": "No adoptar todavía. Considera para roadmap futuro.",
-        "investor": "Pre-seed signal. Track el progreso, no commitear aún.",
+        "developer": "Watch. Star it, revisit in 3 months.",
+        "cto": "Don't adopt yet. Consider for a future roadmap.",
+        "investor": "Pre-seed signal. Track the progress; don't commit yet.",
     },
     "ahead-of-its-time": {
-        "developer": "Aprende de la tecnología. Demasiado nicho para producción.",
-        "cto": "Track. Útil si el mercado se mueve hacia este modelo.",
-        "investor": "Riesgo de timing. No fundable hoy salvo deep-tech con tesis larga.",
+        "developer": "Learn from the technology. Too niche for production.",
+        "cto": "Track. Useful if the market shifts toward this model.",
+        "investor": "Timing risk. Not fundable today unless deep-tech with a long thesis.",
     },
     "solid-commodity": {
-        "developer": "Adopta si necesitas la funcionalidad. Sin upside técnico.",
-        "cto": "Stack risk muy bajo. Bueno para llenar un hueco táctico.",
-        "investor": "No fundable como diferenciado. Posible target de adquisición operativa.",
+        "developer": "Adopt if you need the functionality. No technical upside.",
+        "cto": "Very low stack risk. Good for filling a tactical gap.",
+        "investor": "Not fundable as differentiated. Possible operational acquisition target.",
     },
     "skill-in-search": {
-        "developer": "Skip el proyecto. El autor podría ser interesante de seguir.",
-        "cto": "Considera al maintainer para tu equipo, no al proyecto.",
-        "investor": "Talent-acquihire. El proyecto en sí no es la inversión.",
+        "developer": "Skip the project. The author may be interesting to follow.",
+        "cto": "Consider the maintainer for your team, not the project.",
+        "investor": "Talent acquihire. The project itself isn't the investment.",
     },
     "incomplete-thesis": {
-        "developer": "Demasiado pronto. Sin acción.",
-        "cto": "No adoptar. Sin información para decidir.",
-        "investor": "Pre-pre-seed. Sin tesis articulada todavía.",
+        "developer": "Too early. No action.",
+        "cto": "Don't adopt. Not enough information to decide.",
+        "investor": "Pre-pre-seed. No articulated thesis yet.",
     },
     "pass": {
         "developer": "Skip.",
@@ -153,20 +153,21 @@ ACTIONS_TEMPLATE: dict[str, dict[str, str]] = {
         "investor": "Pass.",
     },
     "indeterminate": {
-        "developer": "Datos insuficientes. Re-audita con todos los pilares activos.",
-        "cto": "No hay base para decidir adopción. Requiere análisis completo.",
-        "investor": "Sin tesis articulable. Cierra los gaps de datos antes de evaluar.",
+        "developer": "Insufficient data. Re-audit with all pillars enabled.",
+        "cto": "No basis to decide on adoption. Requires a complete analysis.",
+        "investor": "No articulable thesis. Close the data gaps before evaluating.",
     },
 }
 
 
 def _axes_with_data(report: AuditReport) -> dict[str, bool]:
-    """¿Qué ejes del verdict tienen datos reales detrás?
+    """Which verdict axes have real data behind them?
 
-    - idea: requiere el pilar de negocio (problem_clarity, differentiation,
-      intellectual_contribution).
-    - execution: el técnico (implementation) o negocio+comunidad (proposal).
-    - relevance: requiere comunidad (señal primaria de demanda).
+    - idea: requires the business pillar (problem_clarity,
+      differentiation, intellectual_contribution).
+    - execution: technical (implementation) or business+community
+      (proposal).
+    - relevance: requires community (the primary demand signal).
     """
     biz_ok = report.business.data_status == "available"
     tech_ok = report.technical.data_status == "available"
@@ -209,26 +210,27 @@ def compute_verdict(report: AuditReport) -> Verdict:
 
 
 def compute_counterfactuals(report: AuditReport) -> list[str]:
-    """¿Qué hipotéticos cambios moverían el veredicto? Programáticos, baratos.
+    """Which hypothetical changes would move the verdict? Programmatic, cheap.
 
-    Solo simulamos +30 al pilar más débil y reportamos si el band sube.
+    We only simulate +30 on the weakest pillar and report whether
+    the band moves up.
     """
     out: list[str] = []
     current = compute_verdict(report)
 
     pillars = [
-        ("technical", report.technical.score, "el pilar técnico"),
-        ("business", report.business.score, "el pilar de tesis & innovación"),
-        ("community", report.community.score, "el pilar de comunidad"),
+        ("technical", report.technical.score, "the technical pillar"),
+        ("business", report.business.score, "the thesis & innovation pillar"),
+        ("community", report.community.score, "the community pillar"),
     ]
     weakest = min(pillars, key=lambda p: p[1])
     if weakest[1] >= 70:
-        return out  # nada que mejorar dramáticamente
+        return out  # nothing dramatic to improve
 
     target = min(weakest[1] + 30, 100)
-    # Construir un report hipotético. El pilar mejorado también pasa a
-    # estar `available` — un score más alto sin datos detrás no es
-    # reportable como counterfactual.
+    # Build a hypothetical report. The boosted pillar also flips to
+    # `available` — a higher score with no data behind it isn't
+    # reportable as a counterfactual.
     cloned = report.model_copy(deep=True)
     if weakest[0] == "technical":
         cloned.technical.score = target
@@ -245,7 +247,7 @@ def compute_counterfactuals(report: AuditReport) -> list[str]:
     new_verdict = compute_verdict(cloned)
     if new_verdict.code != current.code:
         out.append(
-            f"Si {weakest[2]} pasara de {weakest[1]:.0f} a {target:.0f}, "
-            f"el veredicto cambiaría de `{current.code}` a `{new_verdict.code}`."
+            f"If {weakest[2]} went from {weakest[1]:.0f} to {target:.0f}, "
+            f"the verdict would change from `{current.code}` to `{new_verdict.code}`."
         )
     return out

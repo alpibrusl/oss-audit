@@ -1,8 +1,9 @@
-"""Web local para navegar el histórico de auditorías + panel de calibración.
+"""Local web UI to browse audit history + calibration panel.
 
-Sin auth, sin backend; lee de la SQLite local. Pensado como herramienta de
-calibración interna (v0.6) — agregamos vistas de comparación, time-series por
-repo, y filtros por verdict para detectar incoherencias del rubric.
+No auth, no backend; reads from the local SQLite. Designed as an
+internal calibration tool (v0.6) — we add comparison views,
+per-repo time series, and verdict filters to spot rubric
+inconsistencies.
 """
 from __future__ import annotations
 
@@ -16,7 +17,7 @@ from .reporter.markdown import render_markdown
 from .storage import get_audit, list_audits
 
 PAGE_TEMPLATE = """<!doctype html>
-<html lang="es"><head>
+<html lang="en"><head>
 <meta charset="utf-8"><title>OSS Auditor — {title}</title>
 <style>
   body {{ font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 1080px;
@@ -61,9 +62,9 @@ PAGE_TEMPLATE = """<!doctype html>
   .stat-label {{ font-size: 0.8rem; color: #666; }}
 </style></head><body>
 <div class="nav">
-  <a href="/">📋 Listado</a>
+  <a href="/">📋 List</a>
   <a href="/dashboard">📊 Dashboard</a>
-  <a href="/calibration">🔬 Calibración</a>
+  <a href="/calibration">🔬 Calibration</a>
 </div>
 {body}
 </body></html>"""
@@ -102,29 +103,29 @@ def create_app() -> FastAPI:
     def index():
         audits = list_audits(limit=200)
         if not audits:
-            return PAGE_TEMPLATE.format(title="Listado", body=(
-                "<h1>OSS Auditor</h1><p>No hay auditorías guardadas. "
-                "Ejecuta <code>oss-audit audit &lt;url&gt;</code> para crear una.</p>"
+            return PAGE_TEMPLATE.format(title="List", body=(
+                "<h1>OSS Auditor</h1><p>No audits stored yet. "
+                "Run <code>oss-audit audit &lt;url&gt;</code> to create one.</p>"
             ))
-        # Para mostrar veredictos en la lista, hidratamos el report (cache local).
+        # To show verdicts in the list we hydrate the report (local cache).
         rows = []
         for a in audits:
             report = get_audit(a["id"])
             rows.append(_row(a, report))
         body = (
-            "<h1>📋 Auditorías guardadas</h1>"
-            "<table><thead><tr><th>ID</th><th>Fecha</th><th>Repo</th>"
-            "<th>Score</th><th>Grade</th><th>Verdict</th><th>Pilares</th></tr></thead>"
+            "<h1>📋 Stored audits</h1>"
+            "<table><thead><tr><th>ID</th><th>Date</th><th>Repo</th>"
+            "<th>Score</th><th>Grade</th><th>Verdict</th><th>Pillars</th></tr></thead>"
             f"<tbody>{''.join(rows)}</tbody></table>"
         )
-        return PAGE_TEMPLATE.format(title="Listado", body=body)
+        return PAGE_TEMPLATE.format(title="List", body=body)
 
     @app.get("/dashboard", response_class=HTMLResponse)
     def dashboard():
         audits = list_audits(limit=500)
         if not audits:
             return PAGE_TEMPLATE.format(title="Dashboard",
-                                        body="<h1>📊 Dashboard</h1><p>Sin datos.</p>")
+                                        body="<h1>📊 Dashboard</h1><p>No data.</p>")
 
         verdicts = Counter()
         grades = Counter()
@@ -137,7 +138,7 @@ def create_app() -> FastAPI:
             grades[report.grade] += 1
             if report.verdict.code:
                 verdicts[report.verdict.code] += 1
-            # Hallucination flag: gap entre LLM market_signals y community.score
+            # Hallucination flag: gap between LLM market_signals and community.score
             if report.business.market_signals > 0:
                 gap = report.business.market_signals - report.community.score
                 if gap > 40:
@@ -156,7 +157,7 @@ def create_app() -> FastAPI:
             grade_table += f"<tr><td>{_grade_html(g)}</td><td>{n}</td></tr>"
         grade_table += "</tbody></table>"
 
-        outliers_html = "<p><em>Sin outliers significativos.</em></p>"
+        outliers_html = "<p><em>No significant outliers.</em></p>"
         if gap_outliers:
             gap_outliers.sort(key=lambda x: -x[3])
             outliers_html = "<table><thead><tr><th>Repo</th><th>Audit</th><th>LLM market_signals - community gap</th></tr></thead><tbody>"
@@ -172,11 +173,11 @@ def create_app() -> FastAPI:
         <div>
           <span class='stat'>
             <div class='stat-num'>{len(audits)}</div>
-            <div class='stat-label'>auditorías totales</div>
+            <div class='stat-label'>total audits</div>
           </span>
           <span class='stat'>
             <div class='stat-num'>{len(set(a['repo_name'] for a in audits))}</div>
-            <div class='stat-label'>repos únicos</div>
+            <div class='stat-label'>unique repos</div>
           </span>
           <span class='stat'>
             <div class='stat-num'>{verdicts.get('bet-on-it', 0)}</div>
@@ -184,21 +185,22 @@ def create_app() -> FastAPI:
           </span>
           <span class='stat'>
             <div class='stat-num'>{len(gap_outliers)}</div>
-            <div class='stat-label'>posibles hallucinations</div>
+            <div class='stat-label'>possible hallucinations</div>
           </span>
         </div>
 
-        <h2>Distribución de veredictos</h2>
+        <h2>Verdict distribution</h2>
         {verdict_table}
 
-        <h2>Distribución de grades</h2>
+        <h2>Grade distribution</h2>
         {grade_table}
 
-        <h2>⚠️ Posible hallucination del LLM</h2>
+        <h2>⚠️ Possible LLM hallucination</h2>
         <div class='panel'>
-          Auditorías donde <code>business.market_signals</code> (LLM-judged)
-          supera a <code>community.score</code> (programmatic) por más de 40
-          puntos. Indicador de que el LLM está inventando demanda observable.
+          Audits where <code>business.market_signals</code> (LLM-judged)
+          exceeds <code>community.score</code> (programmatic) by more
+          than 40 points. Indicator that the LLM is inventing observable
+          demand.
         </div>
         {outliers_html}
         """
@@ -206,8 +208,8 @@ def create_app() -> FastAPI:
 
     @app.get("/calibration", response_class=HTMLResponse)
     def calibration():
-        """Time-series por repo + comparación entre auditorías. Útil para
-        detectar inconsistencia (mismo repo audita distinto en runs separados)."""
+        """Per-repo time series + audit comparison. Useful for spotting
+        inconsistency (the same repo audited differently across runs)."""
         audits = list_audits(limit=500)
         by_source: dict[str, list[dict]] = defaultdict(list)
         for a in audits:
@@ -232,11 +234,12 @@ def create_app() -> FastAPI:
             )
 
         body = """
-        <h1>🔬 Panel de calibración</h1>
+        <h1>🔬 Calibration panel</h1>
         <div class='panel'>
-          Repos con ≥2 auditorías. Spread alto o cambio de grade entre runs
-          puede indicar (a) el repo cambió, (b) el rubric es inestable, o
-          (c) variabilidad del LLM. Compará pares específicos para diagnosticar.
+          Repos with ≥2 audits. A high spread or a grade change between
+          runs may indicate (a) the repo changed, (b) the rubric is
+          unstable, or (c) LLM variability. Compare specific pairs to
+          diagnose.
         </div>
         """
         if rows:
@@ -246,22 +249,22 @@ def create_app() -> FastAPI:
                 f"<tbody>{''.join(rows)}</tbody></table>"
             )
         else:
-            body += "<p><em>Sin repos con auditorías repetidas todavía.</em></p>"
+            body += "<p><em>No repos with repeated audits yet.</em></p>"
 
-        body += "<p>¿Querés comparar dos auditorías directamente? <code>/compare?a=ID1&b=ID2</code></p>"
-        return PAGE_TEMPLATE.format(title="Calibración", body=body)
+        body += "<p>Want to compare two audits directly? <code>/compare?a=ID1&b=ID2</code></p>"
+        return PAGE_TEMPLATE.format(title="Calibration", body=body)
 
     @app.get("/repo", response_class=HTMLResponse)
     def repo_history(source: str):
         audits = [a for a in list_audits(limit=500) if a["source"] == source]
         if not audits:
-            raise HTTPException(404, "Sin auditorías para esa fuente")
+            raise HTTPException(404, "No audits for that source")
         rows = "".join(_row(a, get_audit(a["id"])) for a in audits)
         body = (
-            f"<h1>Historial: {audits[0]['repo_name']}</h1>"
+            f"<h1>History: {audits[0]['repo_name']}</h1>"
             f"<p><code>{source}</code></p>"
-            "<table><thead><tr><th>ID</th><th>Fecha</th><th>Repo</th>"
-            "<th>Score</th><th>Grade</th><th>Verdict</th><th>Pilares</th></tr></thead>"
+            "<table><thead><tr><th>ID</th><th>Date</th><th>Repo</th>"
+            "<th>Score</th><th>Grade</th><th>Verdict</th><th>Pillars</th></tr></thead>"
             f"<tbody>{rows}</tbody></table>"
         )
         return PAGE_TEMPLATE.format(title=f"Repo: {audits[0]['repo_name']}", body=body)
@@ -276,12 +279,12 @@ def create_app() -> FastAPI:
                 rows.append(_row(a, r))
         body = (
             f"<h1>Verdict: {_verdict_html(verdict)}</h1>"
-            f"<p>{len(rows)} auditoría(s) con este veredicto.</p>"
+            f"<p>{len(rows)} audit(s) with this verdict.</p>"
         )
         if rows:
             body += (
-                "<table><thead><tr><th>ID</th><th>Fecha</th><th>Repo</th>"
-                "<th>Score</th><th>Grade</th><th>Verdict</th><th>Pilares</th></tr></thead>"
+                "<table><thead><tr><th>ID</th><th>Date</th><th>Repo</th>"
+                "<th>Score</th><th>Grade</th><th>Verdict</th><th>Pillars</th></tr></thead>"
                 f"<tbody>{''.join(rows)}</tbody></table>"
             )
         return PAGE_TEMPLATE.format(title=f"Verdict {verdict}", body=body)
@@ -305,7 +308,7 @@ def create_app() -> FastAPI:
             """
 
         body = f"""
-        <h1>Comparar #{a} vs #{b}</h1>
+        <h1>Compare #{a} vs #{b}</h1>
         <div class='compare-grid'>
           <div>{cell(ra)}</div>
           <div>{cell(rb)}</div>
@@ -317,7 +320,7 @@ def create_app() -> FastAPI:
     def view(audit_id: int):
         report = get_audit(audit_id)
         if report is None:
-            raise HTTPException(404, "Auditoría no encontrada")
+            raise HTTPException(404, "Audit not found")
         md_text = render_markdown(report)
         html = md.markdown(md_text, extensions=["tables", "fenced_code"])
         return PAGE_TEMPLATE.format(title=f"Audit #{audit_id}", body=html)
@@ -326,7 +329,7 @@ def create_app() -> FastAPI:
     def view_json(audit_id: int):
         report = get_audit(audit_id)
         if report is None:
-            raise HTTPException(404, "Auditoría no encontrada")
+            raise HTTPException(404, "Audit not found")
         return JSONResponse(report.model_dump(mode="json"))
 
     return app

@@ -1,4 +1,4 @@
-"""Orquestador del pilar técnico — ensambla universal + per-language en un score."""
+"""Technical pillar orchestrator — assembles universal + per-language into a score."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,17 +10,17 @@ from .universal import universal_checks
 
 
 def audit_technical(meta: RepoMeta, repo_path: Path) -> TechnicalReport:
-    """Ejecuta todo el pilar técnico y produce un TechnicalReport con score 0-100.
+    """Run the entire technical pillar and produce a TechnicalReport (score 0-100).
 
-    Score = ponderación de:
-      - Tests presentes (15)
-      - CI configurado (10)
-      - Sin secretos (20)
-      - Vulnerabilidades pocas (20)
-      - Lint warnings bajo control (15)
-      - Política de seguridad (5)
-      - Licencia identificada (5)
-      - Penalización por errores de compilación (10)
+    Score = weighted combination of:
+      - Tests present (15)
+      - CI configured (10)
+      - No secrets (20)
+      - Few dependency vulnerabilities (20)
+      - Lint warnings under control (15)
+      - Security policy (5)
+      - License identified (5)
+      - Penalty for build errors (10)
     """
     universal = universal_checks(repo_path)
     lang_results = run_for_languages(repo_path, meta.languages)
@@ -49,26 +49,26 @@ def audit_technical(meta: RepoMeta, repo_path: Path) -> TechnicalReport:
                 findings.append(Finding(
                     severity="high" if v > 5 else "medium",
                     category="dependencies",
-                    title=f"{v} vulnerabilidades en dependencias ({tool_name})",
-                    detail=f"Detectadas por {tool_name} en stack {lang}.",
-                    recommendation="Actualizar dependencias afectadas o evaluar mitigaciones.",
+                    title=f"{v} dependency vulnerabilities ({tool_name})",
+                    detail=f"Detected by {tool_name} in the {lang} stack.",
+                    recommendation="Update the affected dependencies or evaluate mitigations.",
                 ))
 
     # ----- Scoring -----
     score = 0.0
 
-    # Tests presencia: 8
+    # Tests presence: 8
     if universal["has_tests"]:
         score += 8
     else:
         findings.append(Finding(
             severity="medium", category="testing",
-            title="No se detectaron archivos de tests",
-            detail="Heurística por nombres de archivo no encontró tests.",
-            recommendation="Añadir suite de tests aumenta confianza y empleabilidad del repo.",
+            title="No test files detected",
+            detail="Filename-based heuristic found no tests.",
+            recommendation="Adding a test suite improves trust and the repo's hireability.",
         ))
 
-    # Densidad de tests: 0-4 (test_files / source_files)
+    # Test density: 0-4 (test_files / source_files)
     density = universal.get("test_density", 0.0)
     if density >= 0.5:
         score += 4
@@ -91,20 +91,20 @@ def audit_technical(meta: RepoMeta, repo_path: Path) -> TechnicalReport:
     else:
         findings.append(Finding(
             severity="low", category="process",
-            title="Sin CI configurado",
-            detail="No se detectaron workflows de GitHub Actions u otros CI providers.",
-            recommendation="Añadir CI básico (build + test) reduce regresiones.",
+            title="No CI configured",
+            detail="No GitHub Actions workflows or other CI providers detected.",
+            recommendation="Adding basic CI (build + test) reduces regressions.",
         ))
 
-    # Secretos: 20 puntos a perder
+    # Secrets: 20 points at stake
     secrets = universal["secrets_count"]
     if secrets == 0:
         score += 20
     elif secrets <= 2:
         score += 10
-    # >2: 0 puntos
+    # >2: 0 points
 
-    # Vulnerabilidades: 20
+    # Vulnerabilities: 20
     if total_vulns == 0:
         score += 20
     elif total_vulns <= 3:
@@ -122,30 +122,30 @@ def audit_technical(meta: RepoMeta, repo_path: Path) -> TechnicalReport:
     else:
         findings.append(Finding(
             severity="high", category="quality",
-            title=f"{total_lint_errors} errores de lint/compilación",
-            detail="Errores que impiden o degradan la build.",
-            recommendation="Resolver errores antes de añadir features.",
+            title=f"{total_lint_errors} lint/compilation errors",
+            detail="Errors that block or degrade the build.",
+            recommendation="Fix the errors before adding features.",
         ))
 
     # Security policy: 5
     if universal["has_security_policy"]:
         score += 5
 
-    # Licencia: 5
+    # License: 5
     if universal["license"] and universal["license"] != "Unknown":
         score += 5
     else:
         findings.append(Finding(
             severity="medium", category="legal",
-            title="Licencia no identificada o ausente",
-            detail=f"Licencia detectada: {universal['license']}",
-            recommendation="Añadir LICENSE explícito (MIT, Apache-2.0, etc.).",
+            title="License not identified or missing",
+            detail=f"Detected license: {universal['license']}",
+            recommendation="Add an explicit LICENSE (MIT, Apache-2.0, etc.).",
         ))
 
-    # Composabilidad (CLI + library + MCP + HTTP + workspace): 0-10
+    # Composability (CLI + library + MCP + HTTP + workspace): 0-10
     score += comp_score
 
-    # Reportes que corrieron: bonus de cobertura de análisis (hasta 5)
+    # Tools that actually ran: analysis-coverage bonus (up to 5)
     coverage_bonus = min(len(tools_run) * 2, 5)
     score += coverage_bonus
 

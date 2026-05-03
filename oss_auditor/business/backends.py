@@ -1,15 +1,15 @@
-"""Backends LLM intercambiables para el pilar de negocio.
+"""Pluggable LLM backends for the business pillar.
 
-Tres caminos:
-- `anthropic-api`: SDK directo con `ANTHROPIC_API_KEY`. Más rápido, sin
-  overhead de cache. Facturación por API console.
-- `claude-cli`: subprocess `claude --print`. Aprovecha la auth de la
-  suscripción Pro/Max del usuario (no requiere API key separada).
-  Trade-off: ~22k tokens de cache creation por llamada.
-- `openai-compatible`: cualquier endpoint con la API de OpenAI
-  (OpenAI, Ollama, OpenRouter, Groq, vLLM, LM Studio, etc).
+Three paths:
+- `anthropic-api`: direct SDK with `ANTHROPIC_API_KEY`. Faster, no
+  cache overhead. Billed via the API console.
+- `claude-cli`: `claude --print` subprocess. Leverages the user's
+  Pro/Max subscription auth (no separate API key needed). Trade-off:
+  ~22k cache-creation tokens per call.
+- `openai-compatible`: any endpoint that speaks the OpenAI API
+  (OpenAI, Ollama, OpenRouter, Groq, vLLM, LM Studio, etc.).
 
-Selección por env: OSS_AUDITOR_BACKEND override, o auto-detect.
+Selected via env: OSS_AUDITOR_BACKEND override, or auto-detect.
 """
 from __future__ import annotations
 
@@ -24,10 +24,11 @@ import httpx
 
 
 class LLMBackend(Protocol):
-    """Contrato mínimo: dado system + user prompts, devolver (texto, modelo_usado).
+    """Minimal contract: given system + user prompts, return (text, model_used).
 
-    `json_schema` es opcional y pista para backends que soporten structured
-    output (Claude CLI con --json-schema, OpenAI con response_format).
+    `json_schema` is optional; a hint for backends that support
+    structured output (Claude CLI with --json-schema, OpenAI with
+    response_format).
     """
     name: str
     model: str
@@ -74,9 +75,10 @@ class ClaudeCLIBackend:
         self, system: str, user: str, max_tokens: int,
         json_schema: dict | None = None,
     ) -> tuple[str, str]:
-        # Claude Code se entrena como agente conversacional: sin --json-schema
-        # tiende a envolver la respuesta en prosa ("I've completed the
-        # analysis..."). Con --json-schema fuerza output estructurado.
+        # Claude Code is trained as a conversational agent: without
+        # --json-schema it tends to wrap the response in prose ("I've
+        # completed the analysis..."). With --json-schema it forces
+        # structured output.
         cmd = [
             "claude", "--print",
             "--output-format", "json",
@@ -93,23 +95,23 @@ class ClaudeCLIBackend:
                 cmd, capture_output=True, text=True, timeout=self.timeout,
             )
         except FileNotFoundError as e:
-            raise RuntimeError("`claude` CLI no encontrado en PATH") from e
+            raise RuntimeError("`claude` CLI not found in PATH") from e
 
         if proc.returncode != 0:
             raise RuntimeError(
-                f"claude CLI falló (rc={proc.returncode}): {proc.stderr[:500]}"
+                f"claude CLI failed (rc={proc.returncode}): {proc.stderr[:500]}"
             )
         try:
             payload = json.loads(proc.stdout)
         except json.JSONDecodeError as e:
-            raise RuntimeError(f"claude CLI no devolvió JSON: {proc.stdout[:300]}") from e
+            raise RuntimeError(f"claude CLI didn't return JSON: {proc.stdout[:300]}") from e
 
         if payload.get("is_error"):
             raise RuntimeError(f"claude CLI error: {payload.get('result', 'unknown')}")
 
         text = payload.get("result", "")
-        # `modelUsage` contiene el modelo realmente invocado (e.g.
-        # "claude-haiku-4-5-20251001" cuando pediste "haiku").
+        # `modelUsage` contains the model actually invoked (e.g.
+        # "claude-haiku-4-5-20251001" when you asked for "haiku").
         used_model = next(iter(payload.get("modelUsage", {}).keys()), self.model)
         return text, used_model
 
@@ -118,12 +120,12 @@ class ClaudeCLIBackend:
 
 @dataclass
 class ClaudeAgentSDKBackend:
-    """Vía oficial para uso programático de Claude Code.
+    """Official path for programmatic use of Claude Code.
 
-    A diferencia de `claude --print` (modo agente conversacional), aquí
-    desactivamos todas las tools y forzamos `max_turns=1` para obtener un
-    texto crudo del modelo, no una "tarea" agentica. Hereda la auth de la
-    suscripción Pro/Max sin necesidad de API key.
+    Unlike `claude --print` (conversational agent mode), here we disable
+    every tool and force `max_turns=1` to get raw model text, not an
+    agentic "task". Inherits Pro/Max subscription auth — no API key
+    needed.
     """
     name: str = "claude-agent-sdk"
     model: str = "claude-opus-4-7"
@@ -151,11 +153,11 @@ class ClaudeAgentSDKBackend:
         )
 
         async def _run() -> tuple[str, str]:
-            # Capturamos solo la respuesta del PRIMER turno del asistente.
-            # En entornos con Stop hooks (como Claude Code mismo), después
-            # del modelo el host puede inyectar UserMessages de hooks
-            # ("commit your changes!"), lo que derailia la conversación.
-            # Nos quedamos con el primer message_id y descartamos el resto.
+            # We capture only the FIRST assistant turn. In environments
+            # with Stop hooks (like Claude Code itself), the host can
+            # inject UserMessages from hooks after the model
+            # ("commit your changes!"), derailing the conversation.
+            # We keep the first message_id and drop the rest.
             chunks: list[str] = []
             used_model = self.model
             first_message_id: str | None = None
@@ -165,7 +167,7 @@ class ClaudeAgentSDKBackend:
                     if first_message_id is None:
                         first_message_id = mid
                     elif mid != first_message_id:
-                        # turno derivado (post-hook) — ignorar
+                        # derived turn (post-hook) — ignore
                         continue
                     if getattr(msg, "model", None):
                         used_model = msg.model
@@ -173,8 +175,9 @@ class ClaudeAgentSDKBackend:
                         if isinstance(block, TextBlock):
                             chunks.append(block.text)
                 elif isinstance(msg, ResultMessage):
-                    # Si ya tenemos texto, no nos importa si el ResultMessage
-                    # marca error por culpa de hooks que se metieron después.
+                    # If we already have text, we don't care if the
+                    # ResultMessage flags an error caused by hooks
+                    # injected later.
                     if not chunks and getattr(msg, "is_error", False):
                         raise RuntimeError(
                             f"Claude Agent SDK error: {getattr(msg, 'result', None) or 'unknown'}"
@@ -184,7 +187,7 @@ class ClaudeAgentSDKBackend:
         try:
             return asyncio.run(asyncio.wait_for(_run(), timeout=self.timeout))
         except asyncio.TimeoutError as e:
-            raise RuntimeError(f"Claude Agent SDK: timeout tras {self.timeout}s") from e
+            raise RuntimeError(f"Claude Agent SDK: timeout after {self.timeout}s") from e
 
 
 # ---------- OpenAI-compatible ----------
@@ -211,7 +214,7 @@ class OpenAICompatibleBackend:
             "max_tokens": max_tokens,
         }
         if json_schema is not None:
-            # response_format con JSON Schema (OpenAI 4o+, Groq, OpenRouter, ...)
+            # response_format with JSON Schema (OpenAI 4o+, Groq, OpenRouter, ...)
             body["response_format"] = {
                 "type": "json_schema",
                 "json_schema": {"name": "analysis", "schema": json_schema, "strict": False},
@@ -235,7 +238,7 @@ class OpenAICompatibleBackend:
 # ---------- Selection ----------
 
 def select_backend() -> LLMBackend | None:
-    """Elige un backend según env vars. Devuelve None si ninguno disponible."""
+    """Pick a backend based on env vars. Returns None if none available."""
     explicit = os.environ.get("OSS_AUDITOR_BACKEND", "").strip().lower()
     model = os.environ.get("OSS_AUDITOR_MODEL")
 
@@ -253,7 +256,7 @@ def select_backend() -> LLMBackend | None:
         if has_anthropic_key:
             pick = "anthropic-api"
         elif has_agent_sdk and has_claude_cli:
-            # SDK usa el binario claude por debajo, pero con auth + control programático.
+            # The SDK uses the claude binary under the hood, with auth + programmatic control.
             pick = "claude-agent-sdk"
         elif has_claude_cli:
             pick = "claude-cli"
