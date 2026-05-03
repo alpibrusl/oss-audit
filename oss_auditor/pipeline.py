@@ -10,6 +10,7 @@ from .business.context_builder import build_business_context
 from .community.github_metrics import audit_community
 from .ingestion import ingest
 from .models import AuditReport, VerdictPayload
+from .reporter.lens import LENSES, apply_lens_guard, get_lens
 from .reporter.scorer import compute_overall, top_recommendations
 from .reporter.verdict import compute_counterfactuals, compute_verdict
 from .technical.runner import audit_technical
@@ -17,6 +18,7 @@ from .technical.runner import audit_technical
 
 def run_audit(source: str, skip_business: bool = False,
               skip_community: bool = False, skip_technical: bool = False,
+              perspective: str | None = None,
               progress=None) -> AuditReport:
     """Full pipeline. Returns an AuditReport.
 
@@ -70,26 +72,44 @@ def run_audit(source: str, skip_business: bool = False,
         else:
             report.community.data_status = "skipped"
 
+        lens = get_lens(perspective)
+        report.lens = lens.name
+
+        # First pass: BASE rubric (general lens, no guards). These values
+        # are what the lex cross-check compares against — drift between
+        # them is calibration signal, not lens artifacts.
         step("📊 Computing score and recommendations...")
-        overall, grade = compute_overall(report)
-        report.overall_score = overall
-        report.grade = grade
-        report.top_recommendations = top_recommendations(report)
+        base_overall, base_grade = compute_overall(report, lens=LENSES["general"])
+        report.overall_score = base_overall
+        report.grade = base_grade
+        report.top_recommendations = top_recommendations(report, lens=lens)
         if report.business.summary:
             report.executive_summary = report.business.summary
 
         step("⚖️  Verdict and counterfactuals...")
-        v = compute_verdict(report)
+        base_verdict = compute_verdict(report)
         report.verdict = VerdictPayload(
-            code=v.code, label=v.label, one_liner=v.one_liner,
-            idea_band=v.idea_band, execution_band=v.execution_band,
-            relevance_band=v.relevance_band, actions=v.actions,
+            code=base_verdict.code, label=base_verdict.label, one_liner=base_verdict.one_liner,
+            idea_band=base_verdict.idea_band, execution_band=base_verdict.execution_band,
+            relevance_band=base_verdict.relevance_band, actions=base_verdict.actions,
         )
-        # Combine programmatic counterfactuals + LLM (mind_changers)
         report.counterfactuals = compute_counterfactuals(report)
         if report.business.mind_changers:
             report.counterfactuals.extend(
                 f"[evidence] {m}" for m in report.business.mind_changers
+            )
+
+        # Second pass: apply the user's chosen lens.
+        if lens.name != "general":
+            step(f"🔍 Applying perspective: {lens.name} ({lens.label})...")
+            lens_overall, lens_grade = compute_overall(report, lens=lens)
+            report.overall_score = lens_overall
+            report.grade = lens_grade
+            guarded = apply_lens_guard(base_verdict, report, lens)
+            report.verdict = VerdictPayload(
+                code=guarded.code, label=guarded.label, one_liner=guarded.one_liner,
+                idea_band=guarded.idea_band, execution_band=guarded.execution_band,
+                relevance_band=guarded.relevance_band, actions=guarded.actions,
             )
 
         return report

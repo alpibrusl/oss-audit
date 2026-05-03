@@ -128,3 +128,4 @@ class AuditReport(BaseModel):
     community: CommunityReport = Field(default_factory=CommunityReport)
     executive_summary: str = ""
     top_recommendations: list[str] = Field(default_factory=list)
+    lens: str = "general"  # active perspective (general | developer | cto | investor | security | maintainer)

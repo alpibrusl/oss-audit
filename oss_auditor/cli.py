@@ -51,12 +51,15 @@ def _emit_or_render(
 def _render_audit_summary(report) -> None:
     grade_color = {"platinum": "magenta", "gold": "yellow", "silver": "white",
                    "bronze": "red", "fail": "bright_red"}.get(report.grade, "white")
+    title = "OSS Auditor"
+    if report.lens != "general":
+        title = f"OSS Auditor — {report.lens} lens"
     console.print()
     console.print(Panel.fit(
         f"[bold]{report.repo.name}[/bold]\n"
         f"Score: [bold {grade_color}]{report.overall_score}/100[/bold {grade_color}] "
         f"({report.grade.upper()})",
-        title="OSS Auditor", border_style=grade_color,
+        title=title, border_style=grade_color,
     ))
     table = Table(title="Pillars", show_header=True, header_style="bold")
     table.add_column("Pillar")
@@ -118,6 +121,9 @@ def audit(
         False, "--skip-community", help="Skip GitHub community metrics. type:bool"),
     skip_technical: bool = typer.Option(
         False, "--skip-technical", help="Skip technical pillar. type:bool"),
+    perspective: str = typer.Option(
+        "general", "--perspective", "--for",
+        help="Audit perspective: general | developer | cto | investor | security | maintainer. type:string"),
     save: bool = typer.Option(
         True, "--save/--no-save", help="Persist to local SQLite DB. type:bool"),
     output: OutputFormat = typer.Option(
@@ -136,6 +142,7 @@ def audit(
             skip_business=skip_business,
             skip_community=skip_community,
             skip_technical=skip_technical,
+            perspective=perspective,
             progress=progress,
         )
     except FileNotFoundError as e:
