@@ -8,6 +8,7 @@ from pathlib import Path
 from .business.analyzer import analyze_business
 from .business.context_builder import build_business_context
 from .community.github_metrics import audit_community
+from .community.internal_metrics import audit_community_internal
 from .ingestion import ingest
 from .models import AuditReport, VerdictPayload
 from .reporter.lens import LENSES, apply_lens_guard, get_lens
@@ -18,7 +19,7 @@ from .technical.runner import audit_technical
 
 def run_audit(source: str, skip_business: bool = False,
               skip_community: bool = False, skip_technical: bool = False,
-              perspective: str | None = None,
+              perspective: str | None = None, mode: str = "public",
               progress=None) -> AuditReport:
     """Full pipeline. Returns an AuditReport.
 
@@ -64,8 +65,12 @@ def run_audit(source: str, skip_business: bool = False,
             report.business.data_status = "skipped"
 
         if not skip_community:
-            step("👥 Community metrics (GitHub API + agent-readiness)...")
-            report.community = audit_community(meta, repo_path)
+            if mode == "private":
+                step("👥 Team-health metrics (local git log + process docs)...")
+                report.community = audit_community_internal(meta, repo_path)
+            else:
+                step("👥 Community metrics (GitHub API + agent-readiness)...")
+                report.community = audit_community(meta, repo_path)
             report.community.data_status = (
                 "available" if report.community.score > 0 else "unavailable"
             )
@@ -74,6 +79,7 @@ def run_audit(source: str, skip_business: bool = False,
 
         lens = get_lens(perspective)
         report.lens = lens.name
+        report.mode = mode if mode in {"public", "private"} else "public"
 
         # First pass: BASE rubric (general lens, no guards). These values
         # are what the lex cross-check compares against — drift between

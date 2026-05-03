@@ -4,7 +4,7 @@
 [![CI](https://github.com/alpibrusl/oss-audit/actions/workflows/ci.yml/badge.svg)](https://github.com/alpibrusl/oss-audit/actions/workflows/ci.yml)
 [![License: EUPL-1.2](https://img.shields.io/badge/license-EUPL--1.2-blue)](LICENSE)
 
-An audit tool that doesn't stop at giving you a number: it tells you **what to do** with the information — adopt, contribute, fund, wait, or pass.
+An audit tool that doesn't stop at giving you a number: it tells you **what to do** with the information — adopt, contribute, fund, wait, or pass. Works on public OSS repos (default) or **on your own private/company repos** with `--mode private` (no network needed; signals come from the local git log + process docs).
 
 > ⚠️ **Status: alpha (v0.5.x).** The API and the rubric may change between minor versions. We're collecting feedback from real audits to calibrate.
 
@@ -127,6 +127,10 @@ oss-audit introspect    # full command tree as JSON
 oss-audit audit . --perspective security    # security engineer's view
 oss-audit audit . --for cto                 # CTO / VP Engineering's view
 # perspectives: general | developer | cto | investor | security | maintainer
+
+# Audit a private / internal company repo — no network, no GitHub API
+oss-audit audit ~/code/internal-service --mode private
+oss-audit audit ~/code/internal-service --mode private --for cto
 ```
 
 ## Key concepts
@@ -164,6 +168,14 @@ Every audit (with the LLM enabled) emits three short paragraphs based on the **s
 - **Developer**: do I use it in prod? do I contribute? do I learn from it?
 - **CTO / VP-Eng**: adopt / pilot / wait / pass + stack risk + is the team hireable?
 - **Investor**: fundable / stage match + risk (technical / market / team)
+
+### Public vs private mode
+The audit's third pillar can come from two sources:
+
+- **`--mode public`** (default): GitHub REST API — stars, forks, contributors, public issues, public bus factor. Requires `GITHUB_TOKEN` for any non-trivial use.
+- **`--mode private`**: local git log + repo files only — no network. Reads `git log` for contributor patterns / recency / bus factor, and scans for `CODEOWNERS`, `CONTRIBUTING.md`, PR templates, ADR folders (`docs/adr/` etc.), and runbook folders (`runbooks/`, `docs/runbooks/`). Designed for company-internal repos where stars/forks are meaningless and the signals that matter are review routing, decision documentation, and team-health.
+
+Mode is **orthogonal to the perspective lens** — `--mode private --for cto` is a CTO's view of an internal repo.
 
 ### Perspective lenses
 The audience views are LLM prose. The `--perspective` flag goes a layer deeper: it **reweights the pillars and reorders findings** programmatically, so the same audit returns a different score and a different "what to look at first" for each role.

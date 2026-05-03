@@ -61,13 +61,16 @@ def _render_audit_summary(report) -> None:
         f"({report.grade.upper()})",
         title=title, border_style=grade_color,
     ))
+    from .reporter.lens import get_lens
+    lens = get_lens(report.lens)
     table = Table(title="Pillars", show_header=True, header_style="bold")
     table.add_column("Pillar")
     table.add_column("Score", justify="right")
     table.add_column("Weight", justify="right")
-    table.add_row("🔧 Technical", f"{report.technical.score:.1f}", "40%")
-    table.add_row("💡 Thesis & innovation", f"{report.business.score:.1f}", "35%")
-    table.add_row("👥 Community", f"{report.community.score:.1f}", "25%")
+    table.add_row("🔧 Technical", f"{report.technical.score:.1f}", f"{lens.weights['technical']*100:.0f}%")
+    table.add_row("💡 Thesis & innovation", f"{report.business.score:.1f}", f"{lens.weights['business']*100:.0f}%")
+    third = "👥 Team / process" if report.mode == "private" else "👥 Community"
+    table.add_row(third, f"{report.community.score:.1f}", f"{lens.weights['community']*100:.0f}%")
     console.print(table)
 
     v = report.verdict
@@ -124,6 +127,9 @@ def audit(
     perspective: str = typer.Option(
         "general", "--perspective", "--for",
         help="Audit perspective: general | developer | cto | investor | security | maintainer. type:string"),
+    mode: str = typer.Option(
+        "public", "--mode",
+        help="Audit mode: public (GitHub API for community) or private (local git log + process docs only). type:string"),
     save: bool = typer.Option(
         True, "--save/--no-save", help="Persist to local SQLite DB. type:bool"),
     output: OutputFormat = typer.Option(
@@ -143,6 +149,7 @@ def audit(
             skip_community=skip_community,
             skip_technical=skip_technical,
             perspective=perspective,
+            mode=mode,
             progress=progress,
         )
     except FileNotFoundError as e:

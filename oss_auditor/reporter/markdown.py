@@ -94,9 +94,10 @@ def render_markdown(report: AuditReport) -> str:
     lines.append("")
     lines.append("| Pillar | Score | Weight |")
     lines.append("|--------|------:|-------:|")
-    lines.append(f"| 🔧 Technical | {r.technical.score:.1f} | 40% |")
-    lines.append(f"| 💡 Thesis & innovation | {r.business.score:.1f} | 35% |")
-    lines.append(f"| 👥 Community | {r.community.score:.1f} | 25% |")
+    lines.append(f"| 🔧 Technical | {r.technical.score:.1f} | {lens.weights['technical']*100:.0f}% |")
+    lines.append(f"| 💡 Thesis & innovation | {r.business.score:.1f} | {lens.weights['business']*100:.0f}% |")
+    third_label = "👥 Team / process" if r.mode == "private" else "👥 Community"
+    lines.append(f"| {third_label} | {r.community.score:.1f} | {lens.weights['community']*100:.0f}% |")
     lines.append("")
 
     # Languages
@@ -208,17 +209,20 @@ def render_markdown(report: AuditReport) -> str:
             lines.append(f"- {o}")
         lines.append("")
 
-    # --- Community pillar ---
-    lines.append("## 👥 Community pillar")
+    # --- Community / Team-health pillar ---
+    private = r.mode == "private"
+    pillar_title = "👥 Team / process pillar" if private else "👥 Community pillar"
+    lines.append(f"## {pillar_title}")
     lines.append("")
     c = r.community
     lines.append(f"**Score:** {c.score:.1f}/100")
     lines.append("")
     lines.append("| Metric | Value |")
     lines.append("|--------|-------|")
-    lines.append(f"| ⭐ Stars | {c.stars} |")
-    lines.append(f"| 🍴 Forks | {c.forks} |")
-    lines.append(f"| 🐛 Open issues | {c.open_issues} |")
+    if not private:
+        lines.append(f"| ⭐ Stars | {c.stars} |")
+        lines.append(f"| 🍴 Forks | {c.forks} |")
+        lines.append(f"| 🐛 Open issues | {c.open_issues} |")
     lines.append(f"| 👤 Contributors | {c.contributors} |")
     lines.append(f"| Bus factor (top 1) | {c.bus_factor_top1_pct:.1f}% |")
     lines.append(f"| Bus factor (top 3) | {c.bus_factor_top3_pct:.1f}% |")
@@ -228,10 +232,11 @@ def render_markdown(report: AuditReport) -> str:
         lines.append(f"| Last commit | {c.last_commit_days_ago} days ago |")
     if c.avg_issue_close_days is not None:
         lines.append(f"| Avg issue close time | {c.avg_issue_close_days:.1f} days |")
-    lines.append(f"| Has releases | {'Yes' if c.has_releases else 'No'} |")
+    if not private:
+        lines.append(f"| Has releases | {'Yes' if c.has_releases else 'No'} |")
     lines.append(f"| Agent-readiness | {c.agent_readiness_score}/10 |")
     if c.is_solo_active:
-        lines.append("| Solo-author mode | active (not abandoned) |")
+        lines.append("| Solo-owner | active (not abandoned) |")
     lines.append("")
     if c.agent_readiness_signals:
         lines.append("**Detected agent-ready signals:**")
