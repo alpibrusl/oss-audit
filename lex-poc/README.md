@@ -28,14 +28,14 @@ the same fixtures.
 
 | File | Role |
 |------|------|
-| `lex-poc/src/oss_audit.lex` | Library: types + scorer + verdict (no `[io]`). |
-| `lex-poc/src/main.lex` | Demo runner: imports `./oss_audit` and prints four scenarios. |
+| `lex-poc/src/models.lex`  | Types only. No imports. |
+| `lex-poc/src/scorer.lex`  | `compute_overall` + grade cap. Imports `./models`. |
+| `lex-poc/src/verdict.lex` | `compute_verdict` + 8-verdict matrix. Imports `./models`. |
+| `lex-poc/src/main.lex`    | Demo runner. Imports `./models`, `./scorer`, `./verdict`. |
 
-The library and runner are split. We don't split the library further (e.g.
-into `models` / `scorer` / `verdict`) because lex's MVP local imports
-mangle types per-importer — `scorer.m.Report` and `verdict.m.Report`
-become distinct nominal types even when both files `import "./models"`.
-See "Open lex limitations" below.
+The diamond (`main` → `scorer`/`verdict` → `models`) resolves cleanly
+since lex 0.1.0 + #91 — `m.Report` is the same nominal type whether
+referenced from `scorer.lex` or `verdict.lex`.
 
 ## What's ported
 
@@ -44,48 +44,29 @@ See "Open lex limitations" below.
 - **Grade cap**: <2 available pillars => max grade Bronze.
 - **Indeterminate verdict** when fewer than 2 of the 3 axes
   (idea / execution / relevance) carry real data.
-- The full 8-verdict matrix + the `pass` default.
+- The full 8-verdict matrix as a flat 12-row record-pattern match
+  on `Bands` (idea / execution / relevance triple).
 
 Pure throughout — the only `[io]` is in `main.lex::main`, and
-`lex check` now surfaces that grant up front (no need to `lex run`
-once just to learn the requirement).
+`lex check` surfaces that grant up front.
 
-## Lex fixes that landed in upstream PRs #83–#86
+## Lex fixes used
 
-After filing the issues, the lex team shipped four improvements that
-let us drop most of the workarounds the previous POC had to wear:
+The shape of this POC tracks six upstream lex improvements; the
+issues were filed during the first port and the fixes landed
+in PRs #83–#91:
 
-| Workaround the old POC had | Fixed by |
-|----------------------------|----------|
-| Single-file consolidation | local file imports (#83) — split into library + runner |
-| `mk_*` constructor wrappers around every nominal record | record literals coerce at every position (#86) — gone |
-| Alphabetical field declaration order | (#86) — restored logical grouping |
-| Trailing commas stripped from fn params/args | trailing commas everywhere (#84) — restored |
+| Workaround needed before fix | Fixed by |
+|------------------------------|----------|
+| Single-file consolidation | local file imports (#83) |
+| Single-library workaround for diamond imports | per-file content-hash mangling so the same module collapses to one nominal type (#91) |
+| `mk_*` constructor wrappers around every nominal record | record literals coerce at every position (#86) |
+| Alphabetical field declaration order | (#86) |
+| 3-char band-key string match (`"HHH"`, `"HML"`, …) → nested per-axis match | bare record patterns match nominal record aliases (#90) |
+| Trailing commas stripped from fn params/args | trailing commas everywhere (#84) |
 | Trial-and-error to discover `--allow-effects io` | `lex check` reports required grants (#85) |
 
-Net change: 410 LOC across two files instead of 370 LOC in one
-single defensive file, and reads like idiomatic lex.
-
-## Open lex limitations (still worked around)
-
-Two things are still pending:
-
-- **Diamond-import duplication.** When `main.lex` imports both
-  `scorer` and `verdict`, and each of those imports `models`, lex's
-  MVP loader mangles them as `main.scorer.m.Report` and
-  `main.verdict.m.Report` — distinct nominal types. The
-  `diamond_keeps_shared_module_once` test in lex-syntax flags this
-  as known MVP behavior pending "store-native imports / SigId
-  stability". For now we keep all types in the library file so
-  every consumer references them through a single alias path.
-- **Record-pattern matching on nominal types.** `match b { { idea: High, ... } => ... }`
-  against `b :: Bands` (a nominal record) fails with
-  `expected: record, got: core.Bands; context: in record pattern`.
-  PR #86 documented "pattern" as a covered position, but in
-  practice it covers constructor patterns (`Foo({ ... })`), not
-  bare record patterns. The verdict matrix uses nested per-axis
-  matches instead — works fine, slightly more verbose than
-  the structural form would be.
+The current POC reads like idiomatic lex, not defensive code.
 
 ## What's NOT ported (and why)
 
@@ -113,7 +94,7 @@ LLM      ─┘
                 │
                 ▼
    ┌──────────────────────────────┐
-   │ lex run oss_audit.lex        │  ← this POC
+   │ lex run main.lex             │  ← this POC
    │   compute_verdict --json …   │
    └──────────────────────────────┘
                 │

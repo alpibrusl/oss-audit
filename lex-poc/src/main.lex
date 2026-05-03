@@ -6,10 +6,12 @@ import "std.io"    as io
 import "std.str"   as str
 import "std.float" as float
 
-import "./oss_audit" as core
+import "./models"  as m
+import "./scorer"  as scorer
+import "./verdict" as verdict
 
 
-fn band_label(b :: core.Band) -> Str {
+fn band_label(b :: m.Band) -> Str {
   match b {
     High   => "high",
     Medium => "medium",
@@ -18,7 +20,7 @@ fn band_label(b :: core.Band) -> Str {
   }
 }
 
-fn grade_label(g :: core.Grade) -> Str {
+fn grade_label(g :: m.Grade) -> Str {
   match g {
     Platinum => "platinum",
     Gold     => "gold",
@@ -30,10 +32,10 @@ fn grade_label(g :: core.Grade) -> Str {
 
 
 fn make_report(
-  tech_score :: Float, tech :: core.DataStatus,
-  biz_score  :: Float, biz  :: core.DataStatus,
-  com_score  :: Float, com  :: core.DataStatus,
-) -> core.Report {
+  tech_score :: Float, tech :: m.DataStatus,
+  biz_score  :: Float, biz  :: m.DataStatus,
+  com_score  :: Float, com  :: m.DataStatus,
+) -> m.Report {
   {
     repo_type: Implementation,
     technical: { score: tech_score, data_status: tech },
@@ -51,9 +53,9 @@ fn make_report(
 }
 
 
-fn line(name :: Str, r :: core.Report) -> Str {
-  let out := core.compute_overall(r)
-  let v   := core.compute_verdict(r)
+fn line(name :: Str, r :: m.Report) -> Str {
+  let out := scorer.compute_overall(r)
+  let v   := verdict.compute_verdict(r)
   str.join(
     [
       name, " | score=", float.to_str(out.score),
