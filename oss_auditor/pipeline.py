@@ -1,6 +1,7 @@
 """End-to-end orchestrator: ingestion -> 3 pillars -> final report."""
 from __future__ import annotations
 
+import os
 import shutil
 import tempfile
 from pathlib import Path
@@ -104,6 +105,34 @@ def run_audit(source: str, skip_business: bool = False,
             report.counterfactuals.extend(
                 f"[evidence] {m}" for m in report.business.mind_changers
             )
+
+        # Optional cross-check: run the rubric AND the universal detectors
+        # through the lex POC implementation. Compares against BASE values
+        # (before lens), so disagreements are real drift, not lens
+        # artifacts.
+        if os.environ.get("OSS_AUDITOR_LEX_CROSS_CHECK") == "1":
+            from .lex_cross_check import (
+                compare, compare_universal, lex_universal, lex_verdict,
+            )
+            lex_r = lex_verdict(report)
+            if lex_r is not None:
+                diffs = compare(report, lex_r)
+                if diffs:
+                    step("⚠️  lex/python rubric disagree: " + "; ".join(diffs))
+                else:
+                    step("✓ lex cross-check (rubric): agree")
+            # Universal detectors pilot — license + SECURITY.md.
+            if not skip_technical and not is_proposal:
+                lex_u = lex_universal(repo_path)
+                if lex_u is not None:
+                    universal_raw = report.technical.raw.get("universal", {})
+                    py_lic = universal_raw.get("license")
+                    py_secmd = bool(universal_raw.get("has_security_policy"))
+                    udiffs = compare_universal(py_lic, py_secmd, lex_u)
+                    if udiffs:
+                        step("⚠️  lex/python universal disagree: " + "; ".join(udiffs))
+                    else:
+                        step("✓ lex cross-check (universal): agree")
 
         # Second pass: apply the user's chosen lens.
         if lens.name != "general":
