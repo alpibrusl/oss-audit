@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from ..models import AuditReport
+from .lens import category_priority, get_lens
 
 GRADE_EMOJI = {
     "platinum": "💎",
@@ -15,6 +16,12 @@ GRADE_EMOJI = {
 def render_markdown(report: AuditReport) -> str:
     r = report
     grade_emoji = GRADE_EMOJI.get(r.grade, "")
+    lens = get_lens(r.lens)
+
+    severity_priority = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+
+    def finding_sort_key(f) -> tuple[int, int]:
+        return (severity_priority.get(f.severity, 5), category_priority(f.category, lens))
 
     lines: list[str] = []
     lines.append(f"# Audit: {r.repo.name}")
@@ -22,6 +29,8 @@ def render_markdown(report: AuditReport) -> str:
     lines.append(f"**Source:** `{r.repo.source}`  ")
     lines.append(f"**Audited:** {r.audited_at.strftime('%Y-%m-%d %H:%M UTC')}  ")
     lines.append(f"**Overall score:** **{r.overall_score}/100** {grade_emoji} _{r.grade.upper()}_")
+    if lens.name != "general":
+        lines.append(f"**Perspective:** `{lens.name}` — {lens.label}. _{lens.description}_  ")
     lines.append("")
 
     # --- Verdict ---
@@ -142,7 +151,7 @@ def render_markdown(report: AuditReport) -> str:
     if t.findings:
         lines.append("### Technical findings")
         lines.append("")
-        for f in t.findings[:10]:
+        for f in sorted(t.findings, key=finding_sort_key)[:10]:
             loc = f" ({f.location})" if f.location else ""
             lines.append(f"- **[{f.severity}]** {f.title}{loc}")
             if f.detail:
@@ -231,7 +240,7 @@ def render_markdown(report: AuditReport) -> str:
         lines.append("")
     if c.findings:
         lines.append("### Community findings")
-        for f in c.findings:
+        for f in sorted(c.findings, key=finding_sort_key):
             lines.append(f"- **[{f.severity}]** {f.title}")
             if f.recommendation:
                 lines.append(f"  - 💡 _{f.recommendation}_")

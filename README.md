@@ -122,6 +122,11 @@ oss-audit serve
 
 # Auto-discovery for agents
 oss-audit introspect    # full command tree as JSON
+
+# Audit through a specific perspective (re-weights pillars + reorders findings)
+oss-audit audit . --perspective security    # security engineer's view
+oss-audit audit . --for cto                 # CTO / VP Engineering's view
+# perspectives: general | developer | cto | investor | security | maintainer
 ```
 
 ## Key concepts
@@ -159,6 +164,20 @@ Every audit (with the LLM enabled) emits three short paragraphs based on the **s
 - **Developer**: do I use it in prod? do I contribute? do I learn from it?
 - **CTO / VP-Eng**: adopt / pilot / wait / pass + stack risk + is the team hireable?
 - **Investor**: fundable / stage match + risk (technical / market / team)
+
+### Perspective lenses
+The audience views are LLM prose. The `--perspective` flag goes a layer deeper: it **reweights the pillars and reorders findings** programmatically, so the same audit returns a different score and a different "what to look at first" for each role.
+
+| Perspective | Weights (T / B / C) | Top finding categories |
+|-------------|--------------------|------------------------|
+| `general` (default) | 40 / 35 / 25 | severity-only |
+| `developer` | 55 / 20 / 25 | testing → process → quality |
+| `cto` | 40 / 20 / 40 | legal → security → community |
+| `investor` | 20 / 55 / 25 | community → legal → security |
+| `security` | 65 / 10 / 25 | security → dependencies → process |
+| `maintainer` | 45 / 15 / 40 | testing → process → community |
+
+The `security` lens additionally **downgrades** any positive verdict (`bet-on-it`, `worth-helping`, …) when there's an unfixed critical finding in the technical pillar, with a "fix criticals first" annotation.
 
 ### Counterfactuals — "what would change my mind"
 Two kinds:
