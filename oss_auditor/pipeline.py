@@ -1,6 +1,7 @@
 """End-to-end orchestrator: ingestion -> 3 pillars -> final report."""
 from __future__ import annotations
 
+import os
 import shutil
 import tempfile
 from pathlib import Path
@@ -91,6 +92,19 @@ def run_audit(source: str, skip_business: bool = False,
             report.counterfactuals.extend(
                 f"[evidence] {m}" for m in report.business.mind_changers
             )
+
+        # Optional cross-check: run the same rubric through the lex POC
+        # implementation. Disagreement surfaces rubric ambiguity, not a
+        # bug — log it but don't fail the audit.
+        if os.environ.get("OSS_AUDITOR_LEX_CROSS_CHECK") == "1":
+            from .lex_cross_check import compare, lex_verdict
+            lex_r = lex_verdict(report)
+            if lex_r is not None:
+                diffs = compare(report, lex_r)
+                if diffs:
+                    step("⚠️  lex/python rubric disagree: " + "; ".join(diffs))
+                else:
+                    step("✓ lex cross-check: agree")
 
         return report
     finally:

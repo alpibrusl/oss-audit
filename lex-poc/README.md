@@ -83,6 +83,30 @@ The 80% of OSS Auditor that's integration glue, not algorithm:
 
 These are integrations, not rubric.
 
+## Cross-check from the Python pipeline
+
+`oss_auditor/lex_cross_check.py` invokes the lex POC on every audit
+when the `OSS_AUDITOR_LEX_CROSS_CHECK=1` env var is set and the
+`lex` binary is on `$PATH`:
+
+```bash
+OSS_AUDITOR_LEX_CROSS_CHECK=1 oss-audit audit . --skip-business --skip-community
+# ...
+# ⚖️  Verdict and counterfactuals...
+# ✓ lex cross-check: agree
+```
+
+The boundary is `lex-poc/src/adapter.lex::cross_check`, which takes
+a flat primitive-only record (the `$variant` JSON convention isn't
+wired for `lex run` arguments yet — see open lex issue) and returns
+a pipe-delimited `<verdict_code>|<grade>|<score>`. The Python side
+parses that string and compares against its own `compute_verdict` /
+`compute_overall` outputs.
+
+A disagreement is logged but does NOT fail the audit — that's
+deliberate. The two implementations are meant to be a calibration
+cross-check: drift between them is the v0.6 calibration signal.
+
 ## Integration plan (not in this PR)
 
 The natural shape is a thin Python shell that delegates the verdict to lex:

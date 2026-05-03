@@ -122,6 +122,10 @@ oss-audit serve
 
 # Auto-discovery for agents
 oss-audit introspect    # full command tree as JSON
+
+# Cross-check the rubric against the lex-lang POC implementation
+# (requires the `lex` binary on $PATH; see lex-poc/README.md)
+OSS_AUDITOR_LEX_CROSS_CHECK=1 oss-audit audit .
 ```
 
 ## Key concepts
