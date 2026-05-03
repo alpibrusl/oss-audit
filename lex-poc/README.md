@@ -65,6 +65,7 @@ in PRs #83–#91:
 | 3-char band-key string match (`"HHH"`, `"HML"`, …) → nested per-axis match | bare record patterns match nominal record aliases (#90) |
 | Trailing commas stripped from fn params/args | trailing commas everywhere (#84) |
 | Trial-and-error to discover `--allow-effects io` | `lex check` reports required grants (#85) |
+| Primitive-only flat adapter for the cross-check (`status` as `Str`, decoded inside lex) | `lex run` decodes `{"$variant":"Name","args":[...]}` argument JSON (#94), so the adapter takes a natural `Report` |
 
 The current POC reads like idiomatic lex, not defensive code.
 
@@ -97,11 +98,12 @@ OSS_AUDITOR_LEX_CROSS_CHECK=1 oss-audit audit . --skip-business --skip-community
 ```
 
 The boundary is `lex-poc/src/adapter.lex::cross_check`, which takes
-a flat primitive-only record (the `$variant` JSON convention isn't
-wired for `lex run` arguments yet — see open lex issue) and returns
-a pipe-delimited `<verdict_code>|<grade>|<score>`. The Python side
-parses that string and compares against its own `compute_verdict` /
-`compute_overall` outputs.
+the natural `Report` record (with variant-tagged `data_status` /
+`repo_type` fields, per lex's `{"$variant":"Name","args":[...]}`
+JSON convention — wired for `lex run` args since #94) and returns
+a flat `{code, grade, score}` record. The Python side parses that
+JSON output and compares against its own `compute_verdict` /
+`compute_overall` results.
 
 A disagreement is logged but does NOT fail the audit — that's
 deliberate. The two implementations are meant to be a calibration

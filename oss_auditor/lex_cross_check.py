@@ -4,9 +4,8 @@ Both implementations of the rubric should agree on every audit. A
 disagreement surfaces ambiguity in the rubric itself — that's the
 v0.6 calibration signal.
 
-The lex implementation lives in `lex-poc/src/`. We invoke it via
-`lex run lex-poc/src/adapter.lex cross_check <json>` when the
-binary is on `$PATH`; otherwise we silently skip. Opt in by setting
+Invocation: `lex run lex-poc/src/adapter.lex cross_check <report-json>`
+when the binary is on `$PATH`. Opt in by setting
 `OSS_AUDITOR_LEX_CROSS_CHECK=1`.
 """
 from __future__ import annotations
@@ -23,21 +22,44 @@ ADAPTER_PATH = Path(__file__).resolve().parent.parent / "lex-poc" / "src" / "ada
 TIMEOUT_SECONDS = 10
 
 
-def _to_input(report: AuditReport) -> dict:
-    """Pack an AuditReport into the flat primitives the lex adapter expects."""
+def _variant(name: str) -> dict:
+    """Encode a unit variant per lex's CLI JSON convention (since #94)."""
+    return {"$variant": name, "args": []}
+
+
+_STATUS_VARIANTS = {
+    "available":   _variant("Available"),
+    "skipped":     _variant("Skipped"),
+    "unavailable": _variant("Unavailable"),
+}
+
+_REPO_TYPE_VARIANTS = {
+    "implementation": _variant("Implementation"),
+    "proposal":       _variant("Proposal"),
+}
+
+
+def _report_to_lex_json(report: AuditReport) -> dict:
+    """Build the Report record in the shape lex's compute_verdict expects."""
     return {
-        "repo_type":   report.repo.repo_type,
-        "tech_status": report.technical.data_status,
-        "tech_score":  float(report.technical.score),
-        "biz_status":  report.business.data_status,
-        "biz_score":   float(report.business.score),
-        "biz_pc":      float(report.business.problem_clarity),
-        "biz_di":      float(report.business.differentiation),
-        "biz_ic":      float(report.business.intellectual_contribution),
-        "biz_ms":      float(report.business.market_signals),
-        "biz_eva":     float(report.business.execution_vs_ambition),
-        "com_status":  report.community.data_status,
-        "com_score":   float(report.community.score),
+        "repo_type": _REPO_TYPE_VARIANTS[report.repo.repo_type],
+        "technical": {
+            "score":       float(report.technical.score),
+            "data_status": _STATUS_VARIANTS[report.technical.data_status],
+        },
+        "business": {
+            "score":                     float(report.business.score),
+            "data_status":               _STATUS_VARIANTS[report.business.data_status],
+            "problem_clarity":           float(report.business.problem_clarity),
+            "differentiation":           float(report.business.differentiation),
+            "intellectual_contribution": float(report.business.intellectual_contribution),
+            "market_signals":            float(report.business.market_signals),
+            "execution_vs_ambition":     float(report.business.execution_vs_ambition),
+        },
+        "community": {
+            "score":       float(report.community.score),
+            "data_status": _STATUS_VARIANTS[report.community.data_status],
+        },
     }
 
 
@@ -50,7 +72,7 @@ def lex_verdict(report: AuditReport) -> dict | None:
     """Return {'code', 'grade', 'score'} from the lex POC, or None on any failure."""
     if not is_available():
         return None
-    payload = json.dumps(_to_input(report))
+    payload = json.dumps(_report_to_lex_json(report))
     try:
         result = subprocess.run(
             [LEX_BINARY, "run", str(ADAPTER_PATH), "cross_check", payload],
@@ -61,16 +83,17 @@ def lex_verdict(report: AuditReport) -> dict | None:
         return None
     if result.returncode != 0:
         return None
-    raw = result.stdout.strip().strip('"')
-    parts = raw.split("|")
-    if len(parts) != 3:
-        return None
-    code, grade, score_s = parts
     try:
-        score = float(score_s)
-    except ValueError:
+        parsed = json.loads(result.stdout)
+    except json.JSONDecodeError:
         return None
-    return {"code": code, "grade": grade, "score": score}
+    if not isinstance(parsed, dict) or not {"code", "grade", "score"} <= parsed.keys():
+        return None
+    return {
+        "code":  parsed["code"],
+        "grade": parsed["grade"],
+        "score": float(parsed["score"]),
+    }
 
 
 def compare(report: AuditReport, lex_result: dict) -> list[str]:
