@@ -129,3 +129,4 @@ class AuditReport(BaseModel):
     executive_summary: str = ""
     top_recommendations: list[str] = Field(default_factory=list)
     lens: str = "general"  # active perspective (general | developer | cto | investor | security | maintainer)
+    mode: Literal["public", "private"] = "public"  # public: GitHub-API community pillar; private: local git+process docs
