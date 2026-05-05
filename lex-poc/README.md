@@ -1,6 +1,6 @@
-# lex-poc — OSS Auditor scoring core in lex-lang
+# lex-poc — Rubric scoring core in lex-lang
 
-A proof-of-concept port of the **pure** parts of OSS Auditor's
+A proof-of-concept port of the **pure** parts of Rubric's
 scoring + verdict layer to [lex-lang](https://github.com/alpibrusl/lex-lang).
 Eats our own dogfood: the rubric we use to audit lex-lang is now
 itself written in lex.
@@ -21,7 +21,7 @@ biz-unavailable | score=56   grade=bronze verdict=pass          bands=(idea=n/a,
 ```
 
 All four scenarios produce **byte-identical scores, grades, and verdicts**
-to the Python reference (`oss_auditor/reporter/{scorer,verdict}.py`) on
+to the Python reference (`rubric/reporter/{scorer,verdict}.py`) on
 the same fixtures.
 
 ## Layout
@@ -73,7 +73,7 @@ The current POC reads like idiomatic lex, not defensive code.
 
 ## What's NOT ported (and why)
 
-The 80% of OSS Auditor that's integration glue, not algorithm:
+The 80% of Rubric that's integration glue, not algorithm:
 
 | Component | Why stubbed |
 |-----------|-------------|
@@ -88,12 +88,12 @@ These are integrations, not rubric.
 
 ## Cross-check from the Python pipeline
 
-`oss_auditor/lex_cross_check.py` invokes the lex POC on every audit
-when the `OSS_AUDITOR_LEX_CROSS_CHECK=1` env var is set and the
+`rubric/lex_cross_check.py` invokes the lex POC on every audit
+when the `RUBRIC_LEX_CROSS_CHECK=1` env var is set and the
 `lex` binary is on `$PATH`:
 
 ```bash
-OSS_AUDITOR_LEX_CROSS_CHECK=1 oss-audit audit . --skip-business --skip-community
+RUBRIC_LEX_CROSS_CHECK=1 rubric audit . --skip-business --skip-community
 # ...
 # ⚖️  Verdict and counterfactuals...
 # ✓ lex cross-check (rubric): agree

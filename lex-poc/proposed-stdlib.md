@@ -32,7 +32,7 @@ lifetime.
 ## 1. `std.collections`
 
 **Why the absence hurts every program.** Lex has `List[T]` but no
-`Map[K, V]`, `Set[T]`, or `Deque[T]`. The OSS Auditor POC ended up doing
+`Map[K, V]`, `Set[T]`, or `Deque[T]`. The Rubric POC ended up doing
 verdict-table dispatch via nested `match` because there's no way to do
 "given a verdict code, look up its action set". Without a hash map,
 every dynamic-key lookup degrades to either an O(n) list scan or a giant
@@ -136,7 +136,7 @@ list.map(matches, fn (m :: Match) -> Str { m.text })
 **Why the absence hurts every program.** `io.read` / `io.write` handle
 single files but you can't list a directory, walk a tree, or glob.
 Every CLI tool, every build system, every audit / scanner needs at
-minimum `fs.walk("./src")`. The OSS Auditor POC's ingestion layer is
+minimum `fs.walk("./src")`. The Rubric POC's ingestion layer is
 50% directory walking.
 
 **API:**
@@ -192,7 +192,7 @@ fn loc(root :: Str) -> [fs] Int {
 
 **Why the absence hurts every program.** SQLite is the default embedded
 DB for ~every CLI app, ~every desktop app, ~every "small service" in
-the world. OSS Auditor uses it for the audit history. Without `std.sql`,
+the world. Rubric uses it for the audit history. Without `std.sql`,
 any stateful lex program either reinvents storage or shells out.
 
 **API:**
@@ -439,7 +439,7 @@ fn gen.choice(options :: List[T])                   -> Generator[T]
 fn test.property(name :: Str, gen :: Generator[T], body :: fn(T) -> Bool) -> Test
 ```
 
-**Example — port the OSS Auditor sanity matrix:**
+**Example — port the Rubric sanity matrix:**
 
 ```lex
 fn rubric_suite() -> Suite {

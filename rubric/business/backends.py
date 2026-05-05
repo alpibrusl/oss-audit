@@ -9,7 +9,7 @@ Three paths:
 - `openai-compatible`: any endpoint that speaks the OpenAI API
   (OpenAI, Ollama, OpenRouter, Groq, vLLM, LM Studio, etc.).
 
-Selected via env: OSS_AUDITOR_BACKEND override, or auto-detect.
+Selected via env: RUBRIC_BACKEND override, or auto-detect.
 """
 from __future__ import annotations
 
@@ -239,8 +239,8 @@ class OpenAICompatibleBackend:
 
 def select_backend() -> LLMBackend | None:
     """Pick a backend based on env vars. Returns None if none available."""
-    explicit = os.environ.get("OSS_AUDITOR_BACKEND", "").strip().lower()
-    model = os.environ.get("OSS_AUDITOR_MODEL")
+    explicit = os.environ.get("RUBRIC_BACKEND", "").strip().lower()
+    model = os.environ.get("RUBRIC_MODEL")
 
     has_anthropic_key = bool(os.environ.get("ANTHROPIC_API_KEY"))
     has_claude_cli = shutil.which("claude") is not None

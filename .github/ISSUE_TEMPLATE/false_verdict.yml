@@ -14,8 +14,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: Versión de OSS Auditor
-      description: "`oss-audit --help` o el `__version__` del paquete."
+      label: Versión de Rubric
+      description: "`rubric --help` o el `__version__` del paquete."
       placeholder: 0.5.0
     validations:
       required: true
@@ -23,7 +23,7 @@ body:
   - type: dropdown
     id: given_verdict
     attributes:
-      label: Veredicto que dio OSS Auditor
+      label: Veredicto que dio Rubric
       options:
         - bet-on-it
         - worth-helping
@@ -64,5 +64,5 @@ body:
     id: report
     attributes:
       label: Reporte completo (opcional)
-      description: Pegá aquí el output de `oss-audit audit <url> --output json` para que podamos analizar qué señales activaron el verdict.
+      description: Pegá aquí el output de `rubric audit <url> --output json` para que podamos analizar qué señales activaron el verdict.
       render: json

@@ -1,6 +1,6 @@
-# OSS Auditor
+# Rubric
 
-[![OSS Audit (technical)](https://img.shields.io/badge/oss--audit-89.0%2F100_gold-brightgreen)](.oss-audit.md)
+[![Rubric (technical)](https://img.shields.io/badge/rubric-89.0%2F100_gold-brightgreen)](.rubric.md)
 [![CI](https://github.com/alpibrusl/oss-audit/actions/workflows/ci.yml/badge.svg)](https://github.com/alpibrusl/oss-audit/actions/workflows/ci.yml)
 [![License: EUPL-1.2](https://img.shields.io/badge/license-EUPL--1.2-blue)](LICENSE)
 
@@ -12,16 +12,16 @@ An audit tool that doesn't stop at giving you a number: it tells you **what to d
 
 Existing tools (OpenSSF Scorecard, Snyk, Sonar) measure **process quality** — good for spotting abandonment and vulnerabilities, bad at telling an innovative project apart from a derivative one. Their rubrics implicitly assume "good OSS = large team + long history", which unfairly penalizes the fastest-growing category: **solo-author + AI-agent projects**.
 
-OSS Auditor is built around three convictions:
+Rubric is built around three convictions:
 
 1. **The post-LLM era changed the game.** One person plus AI agents can ship at the pace of a five-person team. A bus factor of `94% one author` isn't a quality red flag if commits are daily — it's a continuity signal, not an execution one.
 2. **Measuring execution isn't enough.** A repo with 92/100 on technical metrics can still be an irrelevant clone. The real question is **idea × execution × relevance**, not execution alone.
 3. **A score without an action is noise.** The report has to answer "do I use it? do I adopt it? do I fund it?" depending on who's reading.
 
-## Demo: `lex-lang` audited by OSS Auditor
+## Demo: `lex-lang` audited by Rubric
 
 ```
-╭───────────────── OSS Auditor ──────────────────╮
+╭───────────────── Rubric ──────────────────╮
 │ lex-lang                                       │
 │ Score: 62.4/100 (SILVER)                       │
 ╰────────────────────────────────────────────────╯
@@ -54,7 +54,7 @@ Mind-changers (what would change the assessment):
 
 ```bash
 git clone https://github.com/alpibrusl/oss-audit
-cd oss-audit
+cd rubric
 pip install -e .
 ```
 
@@ -70,7 +70,7 @@ Optional external tools (boost the technical pillar when present in `$PATH`):
 
 ## LLM backend
 
-The thesis & innovation pillar needs an LLM. Three options, auto-detected or forced via `OSS_AUDITOR_BACKEND`:
+The thesis & innovation pillar needs an LLM. Three options, auto-detected or forced via `RUBRIC_BACKEND`:
 
 | Option | How | Auth |
 |--------|-----|------|
@@ -82,9 +82,9 @@ The thesis & innovation pillar needs an LLM. Three options, auto-detected or for
 
 ```bash
 # Explicit override
-export OSS_AUDITOR_BACKEND=openai-compatible
+export RUBRIC_BACKEND=openai-compatible
 export OPENAI_BASE_URL=http://localhost:11434/v1   # local Ollama
-export OSS_AUDITOR_MODEL=llama3.1:70b
+export RUBRIC_MODEL=llama3.1:70b
 ```
 
 A GitHub token is recommended but optional (without one the rate limit is 60 req/h):
@@ -97,46 +97,46 @@ GITHUB_TOKEN=ghp_…
 
 ```bash
 # Full audit (technical + thesis + community)
-oss-audit audit https://github.com/alpibrusl/lex-lang
+rubric audit https://github.com/alpibrusl/lex-lang
 
 # Local signals only, no LLM nor GitHub API
-oss-audit audit ~/code/my-project --skip-business --skip-community
+rubric audit ~/code/my-project --skip-business --skip-community
 
 # JSON envelope for agents / scripts
-oss-audit audit https://github.com/alpibrusl/lex-lang --output json
+rubric audit https://github.com/alpibrusl/lex-lang --output json
 
 # "Proposal"-type repos (gists, RFCs, specs)
-oss-audit audit https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
+rubric audit https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
 
 # List / show stored audits
-oss-audit list
-oss-audit show 1
+rubric list
+rubric show 1
 
 # Generate a shields.io badge for the README
-oss-audit badge                            # markdown for the latest audit
-oss-audit badge 1 --format url             # static URL
-oss-audit badge 1 --format endpoint        # JSON for img.shields.io/endpoint?url=…
+rubric badge                            # markdown for the latest audit
+rubric badge 1 --format url             # static URL
+rubric badge 1 --format endpoint        # JSON for img.shields.io/endpoint?url=…
 
 # Local web UI to browse history
-oss-audit serve
+rubric serve
 
 # Auto-discovery for agents
-oss-audit introspect    # full command tree as JSON
+rubric introspect    # full command tree as JSON
 
 # Audit through a specific perspective (re-weights pillars + reorders findings)
-oss-audit audit . --perspective security    # security engineer's view
-oss-audit audit . --for cto                 # CTO / VP Engineering's view
+rubric audit . --perspective security    # security engineer's view
+rubric audit . --for cto                 # CTO / VP Engineering's view
 # perspectives: general | developer | cto | investor | security | maintainer
 
 # Audit a private / internal company repo — no network, no GitHub API
-oss-audit audit ~/code/internal-service --mode private
-oss-audit audit ~/code/internal-service --mode private --for cto
+rubric audit ~/code/internal-service --mode private
+rubric audit ~/code/internal-service --mode private --for cto
 ```
 
 ## Key concepts
 
 ### Artifact type
-Before scoring, OSS Auditor classifies the repo:
+Before scoring, Rubric classifies the repo:
 - **`implementation`** — the code is the artifact (most repos).
 - **`proposal`** — the spec / idea is the artifact (gists, RFCs, "ideas with traction"). Auto-detected from gist URLs or from low-LOC + heavy README + traction. In proposal mode the technical pillar is **skipped** and the weights are renormalized.
 
@@ -199,8 +199,8 @@ Two kinds:
 ## Architecture
 
 ```
-oss_auditor/
-├── cli.py                      # `oss-audit` (ACLI-compliant)
+rubric/
+├── cli.py                      # `rubric` (ACLI-compliant)
 ├── pipeline.py                 # End-to-end orchestrator
 ├── ingestion.py                # Clone/local + language detection + classifier
 ├── models.py                   # Pydantic schemas
@@ -234,12 +234,12 @@ oss_auditor/
 
 ## Contributing
 
-Best first PR: add a detector to `oss_auditor/community/agent_readiness.py` or `oss_auditor/technical/composability.py`. They're self-contained modules and easy to test.
+Best first PR: add a detector to `rubric/community/agent_readiness.py` or `rubric/technical/composability.py`. They're self-contained modules and easy to test.
 
 ```bash
 pip install -e .
 python tests/smoke_test.py
-oss-audit audit . --skip-business --skip-community  # eat your own dogfood
+rubric audit . --skip-business --skip-community  # eat your own dogfood
 ```
 
 Issues are welcome for:

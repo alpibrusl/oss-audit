@@ -6,7 +6,7 @@ from pathlib import Path
 
 from ..models import AuditReport
 
-DEFAULT_DB = Path.home() / ".oss-auditor" / "audits.db"
+DEFAULT_DB = Path.home() / ".rubric" / "audits.db"
 
 
 def _ensure_db(db_path: Path) -> sqlite3.Connection:

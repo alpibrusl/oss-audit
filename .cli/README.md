@@ -1,4 +1,4 @@
-# oss-audit
+# rubric
 
 Version: 0.1.0
 ACLI version: 0.1.0

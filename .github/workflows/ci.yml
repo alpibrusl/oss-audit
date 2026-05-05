@@ -22,8 +22,8 @@ jobs:
           pip install -e .
           pip install ruff
       - name: Lint (ruff)
-        run: ruff check oss_auditor tests
+        run: ruff check rubric tests
       - name: Smoke test
         run: python tests/smoke_test.py
       - name: Self-audit (technical pillar only)
-        run: oss-audit audit . --skip-business --skip-community --no-save
+        run: rubric audit . --skip-business --skip-community --no-save

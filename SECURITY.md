@@ -1,6 +1,6 @@
 # Security policy
 
-OSS Auditor is alpha (`v0.5.x`); there's no private disclosure channel yet. If you find a vulnerability:
+Rubric is alpha (`v0.5.x`); there's no private disclosure channel yet. If you find a vulnerability:
 
 - **Private / sensitive** (e.g. arbitrary code execution when auditing a malicious repo, environment-variable leaks, etc.): open an **empty** issue and mention `@alpibrusl` so we can reach you privately by email. Don't post the details in the issue.
 - **Public / low severity** (a secret pattern that misses, a false positive in `agent_readiness`, etc.): a regular issue with the `security` label.

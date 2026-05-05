@@ -1,5 +1,5 @@
 # Verdict layer — pure functional port of
-# `oss_auditor/reporter/verdict.py::compute_verdict`.
+# `rubric/reporter/verdict.py::compute_verdict`.
 #
 # Three axes (idea / execution / relevance), each in {Low, Medium,
 # High, NA}. Returns one of the 8 verdicts, plus `pass` (default)

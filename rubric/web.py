@@ -18,7 +18,7 @@ from .storage import get_audit, list_audits
 
 PAGE_TEMPLATE = """<!doctype html>
 <html lang="en"><head>
-<meta charset="utf-8"><title>OSS Auditor — {title}</title>
+<meta charset="utf-8"><title>Rubric — {title}</title>
 <style>
   body {{ font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 1080px;
          margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; line-height: 1.55; }}
@@ -97,15 +97,15 @@ def _row(a: dict, report=None) -> str:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="OSS Auditor")
+    app = FastAPI(title="Rubric")
 
     @app.get("/", response_class=HTMLResponse)
     def index():
         audits = list_audits(limit=200)
         if not audits:
             return PAGE_TEMPLATE.format(title="List", body=(
-                "<h1>OSS Auditor</h1><p>No audits stored yet. "
-                "Run <code>oss-audit audit &lt;url&gt;</code> to create one.</p>"
+                "<h1>Rubric</h1><p>No audits stored yet. "
+                "Run <code>rubric audit &lt;url&gt;</code> to create one.</p>"
             ))
         # To show verdicts in the list we hydrate the report (local cache).
         rows = []

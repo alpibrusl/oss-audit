@@ -22,7 +22,7 @@ All releases follow [SemVer](https://semver.org). The API and rubric are unstabl
 
 - **Pluggable backends**: `anthropic-api`, `claude-agent-sdk` (Pro/Max subscription), `claude-cli`, `openai-compatible` (OpenAI / OpenRouter / Groq / Ollama / vLLM / LM Studio).
 - **Model in the report**: `BusinessReport.backend` and `.model` capture which backend and which model actually responded.
-- **Shields.io badge**: `oss-audit badge` emits markdown / static URL / endpoint JSON.
+- **Shields.io badge**: `rubric badge` emits markdown / static URL / endpoint JSON.
 - **Stop-hook awareness**: the SDK backend filters out messages injected by host hooks (Claude Code) that derail the conversation.
 
 ## v0.2.0 — Community pillar rebalance
@@ -33,7 +33,7 @@ All releases follow [SemVer](https://semver.org). The API and rubric are unstabl
 
 ## v0.1.0 — Initial
 
-- ACLI-compliant CLI (`oss-audit`).
+- ACLI-compliant CLI (`rubric`).
 - Three pillars: technical (40%), LLM-driven business (35%), community (25%).
 - Local SQLite storage + FastAPI web for history.
 - LICENSE EUPL-1.2.

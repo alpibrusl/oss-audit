@@ -28,7 +28,7 @@ def _shields_escape(s: str) -> str:
     return quote(s, safe="")
 
 
-def to_shields_url(report: AuditReport, label: str = "oss-audit") -> str:
+def to_shields_url(report: AuditReport, label: str = "rubric") -> str:
     """Return the static shields.io URL for the badge."""
     color = GRADE_COLOR.get(report.grade, "lightgrey")
     message = f"{report.overall_score:.1f}/100 {report.grade}"
@@ -38,7 +38,7 @@ def to_shields_url(report: AuditReport, label: str = "oss-audit") -> str:
     )
 
 
-def to_endpoint_payload(report: AuditReport, label: str = "oss-audit") -> dict:
+def to_endpoint_payload(report: AuditReport, label: str = "rubric") -> dict:
     """Return a JSON payload compatible with shields.io endpoint badges.
 
     Typical hosting: commit this JSON into the repo and reference it via
@@ -54,7 +54,7 @@ def to_endpoint_payload(report: AuditReport, label: str = "oss-audit") -> dict:
 
 
 def to_markdown(report: AuditReport, link_url: str | None = None,
-                label: str = "oss-audit") -> str:
+                label: str = "rubric") -> str:
     """Return a Markdown snippet ready to paste into a README."""
     badge_url = to_shields_url(report, label)
     target = link_url or report.repo.source

@@ -1,6 +1,6 @@
-# Core data types for the lex-flavored OSS Auditor POC.
+# Core data types for the lex-flavored Rubric POC.
 #
-# Mirror the Pydantic models in `oss_auditor/models.py`, scoped
+# Mirror the Pydantic models in `rubric/models.py`, scoped
 # to what the verdict + scoring layer consumes. Pure data; no
 # [io] effects.
 
