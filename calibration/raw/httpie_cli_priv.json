@@ -1,0 +1,220 @@
+{
+  "ok": true,
+  "command": "audit",
+  "data": {
+    "audited_at": "2026-05-05T21:32:53.872296",
+    "repo": {
+      "source": "https://github.com/httpie/cli",
+      "is_remote": true,
+      "is_gist": false,
+      "owner": "httpie",
+      "name": "cli",
+      "local_path": "/tmp/rubric-qna2_w4t/repo",
+      "languages": {
+        "Python": 99.32,
+        "Ruby": 0.68
+      },
+      "primary_language": "Python",
+      "total_files": 126,
+      "total_loc": 15638,
+      "repo_type": "implementation",
+      "repo_type_reason": "15638 LOC indicates a code artifact"
+    },
+    "overall_score": 47.5,
+    "grade": "bronze",
+    "verdict": {
+      "code": "pass",
+      "label": "Pass",
+      "one_liner": "Not enough signal on any axis. Pass.",
+      "idea_band": "n/a",
+      "execution_band": "high",
+      "relevance_band": "low",
+      "actions": {
+        "developer": "Skip.",
+        "cto": "Pass.",
+        "investor": "Pass."
+      }
+    },
+    "counterfactuals": [
+      "If the thesis & innovation pillar went from 0 to 30, the verdict would change from `pass` to `ahead-of-its-time`."
+    ],
+    "technical": {
+      "score": 74.0,
+      "data_status": "available",
+      "test_coverage": null,
+      "has_ci": true,
+      "has_tests": true,
+      "test_density": 1.132,
+      "has_fuzz_tests": false,
+      "has_property_tests": false,
+      "secrets_found": 1,
+      "vulnerabilities": 0,
+      "lint_issues": 2,
+      "complexity_avg": null,
+      "composability_score": 0,
+      "composability_surfaces": [],
+      "tools_run": [
+        "ruff (Python)"
+      ],
+      "findings": [
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "tests/test_auth_plugins.py:12",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "medium",
+          "category": "legal",
+          "title": "License not identified or missing",
+          "detail": "Detected license: Unknown",
+          "location": null,
+          "recommendation": "Add an explicit LICENSE (MIT, Apache-2.0, etc.)."
+        }
+      ],
+      "raw": {
+        "universal": {
+          "has_ci": true,
+          "ci_files": [
+            ".github/workflows/benchmark.yml",
+            ".github/workflows/test-package-linux-snap.yml",
+            ".github/workflows/release-choco.yml",
+            ".github/workflows/tests.yml",
+            ".github/workflows/release-pypi.yml",
+            ".github/workflows/release-brew.yml",
+            ".github/workflows/docs-deploy.yml",
+            ".github/workflows/content.yml",
+            ".github/workflows/code-style.yml",
+            ".github/workflows/docs-check-markdown.yml",
+            ".github/workflows/stale.yml",
+            ".github/workflows/coverage.yml",
+            ".github/workflows/release-linux-standalone.yml",
+            ".github/workflows/release-snap.yml",
+            ".github/workflows/test-package-mac-brew.yml"
+          ],
+          "has_tests": true,
+          "test_file_count": 103,
+          "source_file_count": 91,
+          "test_density": 1.132,
+          "has_fuzz_tests": false,
+          "has_property_tests": false,
+          "secrets_count": 1,
+          "has_security_policy": true,
+          "license": "Unknown"
+        },
+        "languages": {
+          "Python": {
+            "language": "Python",
+            "tools": {
+              "ruff": {
+                "available": true,
+                "issues": 2,
+                "by_code": {
+                  "F401": 1,
+                  "F541": 1
+                }
+              },
+              "pip-audit": {
+                "available": false,
+                "hint": "pip install pip-audit"
+              }
+            }
+          }
+        }
+      }
+    },
+    "business": {
+      "score": 0.0,
+      "data_status": "skipped",
+      "problem_clarity": 0.0,
+      "execution_vs_ambition": 0.0,
+      "differentiation": 0.0,
+      "market_signals": 0.0,
+      "viability_risks": 0.0,
+      "intellectual_contribution": 0.0,
+      "summary": "",
+      "novelty_summary": "",
+      "nearest_prior_art": [],
+      "strengths": [],
+      "weaknesses": [],
+      "opportunities": [],
+      "developer_view": "",
+      "cto_view": "",
+      "investor_view": "",
+      "mind_changers": [],
+      "raw_analysis": "",
+      "backend": "",
+      "model": ""
+    },
+    "community": {
+      "score": 5.0,
+      "data_status": "available",
+      "stars": 0,
+      "forks": 0,
+      "open_issues": 0,
+      "closed_issues": 0,
+      "contributors": 1,
+      "bus_factor_top1_pct": 100.0,
+      "bus_factor_top3_pct": 100.0,
+      "commits_last_90d": 0,
+      "avg_issue_close_days": null,
+      "last_commit_days_ago": 504,
+      "has_releases": false,
+      "agent_readiness_score": 0,
+      "agent_readiness_signals": [],
+      "is_solo_active": false,
+      "commits_per_author_90d": 0.0,
+      "findings": [
+        {
+          "severity": "medium",
+          "category": "community",
+          "title": "No commits in the last 90 days",
+          "detail": "Inactive repo; possible abandonment signal.",
+          "location": null,
+          "recommendation": null
+        },
+        {
+          "severity": "high",
+          "category": "community",
+          "title": "Abandonment risk: bus factor 100.0% with no recent activity",
+          "detail": "Single primary author and no recent commits.",
+          "location": null,
+          "recommendation": "Verify the repo is actively owned; consider archiving / sunsetting."
+        },
+        {
+          "severity": "low",
+          "category": "process",
+          "title": "No CODEOWNERS file",
+          "detail": "Code-review routing isn't documented.",
+          "location": null,
+          "recommendation": "Add CODEOWNERS so review responsibilities are explicit."
+        },
+        {
+          "severity": "info",
+          "category": "process",
+          "title": "No ADRs or runbooks detected",
+          "detail": "No `docs/adr/` or `runbooks/` folder found.",
+          "location": null,
+          "recommendation": "ADRs document WHY decisions were made; runbooks document HOW to operate the service. Both pay off in a year."
+        }
+      ]
+    },
+    "executive_summary": "",
+    "top_recommendations": [
+      "[Technical/high] Possible secret: Hardcoded Password: Verify and rotate if it's real. Use environment variables.",
+      "[Community/high] Abandonment risk: bus factor 100.0% with no recent activity: Verify the repo is actively owned; consider archiving / sunsetting.",
+      "[Technical/medium] License not identified or missing: Add an explicit LICENSE (MIT, Apache-2.0, etc.).",
+      "[Community/low] No CODEOWNERS file: Add CODEOWNERS so review responsibilities are explicit.",
+      "[Community/info] No ADRs or runbooks detected: ADRs document WHY decisions were made; runbooks document HOW to operate the service. Both pay off in a year."
+    ],
+    "lens": "general",
+    "mode": "private",
+    "saved_id": 5
+  },
+  "meta": {
+    "duration_ms": 630,
+    "version": "0.6.0"
+  }
+}

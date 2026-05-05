@@ -1,0 +1,166 @@
+{
+  "ok": true,
+  "command": "audit",
+  "data": {
+    "audited_at": "2026-05-05T21:30:26.406580",
+    "repo": {
+      "source": "https://github.com/alpibrusl/lex-lang",
+      "is_remote": true,
+      "is_gist": false,
+      "owner": "alpibrusl",
+      "name": "lex-lang",
+      "local_path": "/tmp/rubric-d2e49cfy/repo",
+      "languages": {
+        "Rust": 99.7,
+        "Python": 0.3
+      },
+      "primary_language": "Rust",
+      "total_files": 164,
+      "total_loc": 39603,
+      "repo_type": "implementation",
+      "repo_type_reason": "39603 LOC indicates a code artifact"
+    },
+    "overall_score": 61.8,
+    "grade": "silver",
+    "verdict": {
+      "code": "pass",
+      "label": "Pass",
+      "one_liner": "Not enough signal on any axis. Pass.",
+      "idea_band": "n/a",
+      "execution_band": "high",
+      "relevance_band": "low",
+      "actions": {
+        "developer": "Skip.",
+        "cto": "Pass.",
+        "investor": "Pass."
+      }
+    },
+    "counterfactuals": [
+      "If the thesis & innovation pillar went from 0 to 30, the verdict would change from `pass` to `ahead-of-its-time`."
+    ],
+    "technical": {
+      "score": 98.0,
+      "data_status": "available",
+      "test_coverage": null,
+      "has_ci": true,
+      "has_tests": true,
+      "test_density": 1.173,
+      "has_fuzz_tests": true,
+      "has_property_tests": false,
+      "secrets_found": 0,
+      "vulnerabilities": 0,
+      "lint_issues": 0,
+      "complexity_avg": null,
+      "composability_score": 6,
+      "composability_surfaces": [
+        "Cargo workspace (multi-crate)",
+        "Rust library (src/lib.rs) @ crates/lex-vcs",
+        "Rust binary ([[bin]] / src/main.rs) @ crates/lex-cli"
+      ],
+      "tools_run": [
+        "clippy (Rust)"
+      ],
+      "findings": [],
+      "raw": {
+        "universal": {
+          "has_ci": true,
+          "ci_files": [
+            ".github/workflows/ci.yml",
+            ".github/workflows/fuzz.yml",
+            ".github/workflows/release.yml"
+          ],
+          "has_tests": true,
+          "test_file_count": 95,
+          "source_file_count": 81,
+          "test_density": 1.173,
+          "has_fuzz_tests": true,
+          "has_property_tests": false,
+          "secrets_count": 0,
+          "has_security_policy": true,
+          "license": "EUPL-1.2"
+        },
+        "languages": {
+          "Rust": {
+            "language": "Rust",
+            "tools": {
+              "cargo-audit": {
+                "available": false,
+                "hint": "cargo install cargo-audit"
+              },
+              "clippy": {
+                "available": true,
+                "warnings": 0,
+                "errors": 0,
+                "exit_code": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "business": {
+      "score": 0.0,
+      "data_status": "skipped",
+      "problem_clarity": 0.0,
+      "execution_vs_ambition": 0.0,
+      "differentiation": 0.0,
+      "market_signals": 0.0,
+      "viability_risks": 0.0,
+      "intellectual_contribution": 0.0,
+      "summary": "",
+      "novelty_summary": "",
+      "nearest_prior_art": [],
+      "strengths": [],
+      "weaknesses": [],
+      "opportunities": [],
+      "developer_view": "",
+      "cto_view": "",
+      "investor_view": "",
+      "mind_changers": [],
+      "raw_analysis": "",
+      "backend": "",
+      "model": ""
+    },
+    "community": {
+      "score": 4.0,
+      "data_status": "available",
+      "stars": 0,
+      "forks": 0,
+      "open_issues": 0,
+      "closed_issues": 0,
+      "contributors": 0,
+      "bus_factor_top1_pct": 0.0,
+      "bus_factor_top3_pct": 0.0,
+      "commits_last_90d": 0,
+      "avg_issue_close_days": null,
+      "last_commit_days_ago": null,
+      "has_releases": false,
+      "agent_readiness_score": 4,
+      "agent_readiness_signals": [
+        "ACLI skill folder (.cli/)",
+        "Runnable examples folder"
+      ],
+      "is_solo_active": false,
+      "commits_per_author_90d": 0.0,
+      "findings": [
+        {
+          "severity": "info",
+          "category": "community",
+          "title": "GitHub API returned status 403",
+          "detail": "Without a token the rate limit is 60 req/h. Set GITHUB_TOKEN for more.",
+          "location": null,
+          "recommendation": null
+        }
+      ]
+    },
+    "executive_summary": "",
+    "top_recommendations": [],
+    "lens": "general",
+    "mode": "public",
+    "saved_id": 1
+  },
+  "meta": {
+    "duration_ms": 37954,
+    "version": "0.6.0"
+  }
+}
