@@ -34,7 +34,7 @@ def run_audit(source: str, skip_business: bool = False,
     workdir = Path(tempfile.mkdtemp(prefix="rubric-"))
     cleanup_needed = False
     try:
-        meta, repo_path = ingest(source, workdir=workdir)
+        meta, repo_path = ingest(source, workdir=workdir, deep_clone=(mode == "private"))
         cleanup_needed = meta.is_remote
 
         report = AuditReport(repo=meta)

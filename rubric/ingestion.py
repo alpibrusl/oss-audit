@@ -100,17 +100,22 @@ def classify_repo_type(
     return "implementation", "code present, doesn't look like a pure spec"
 
 
-def clone_repo(url: str, dest: Path) -> Path:
-    """Shallow-clone a repo into dest. Returns the directory path."""
+def clone_repo(url: str, dest: Path, depth: int | None = 1) -> Path:
+    """Clone a repo into dest. Returns the directory path.
+
+    `depth=1` is the default (shallow clone — fast). Pass `depth=None`
+    for a full clone, or a larger int for a partial-but-deeper clone.
+    Private-mode audits need historical commits for the git-log-based
+    community pillar; pipeline.py passes `depth=500` in that case.
+    """
     target = dest / "repo"
     if target.exists():
         shutil.rmtree(target)
-    subprocess.run(
-        ["git", "clone", "--depth", "1", url, str(target)],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    args = ["git", "clone"]
+    if depth is not None:
+        args += ["--depth", str(depth)]
+    args += [url, str(target)]
+    subprocess.run(args, check=True, capture_output=True, text=True)
     return target
 
 
@@ -149,11 +154,16 @@ def detect_languages(repo_path: Path) -> tuple[dict[str, float], int, int]:
     return pct, total_files, total_loc
 
 
-def ingest(source: str, workdir: Path | None = None) -> tuple[RepoMeta, Path]:
+def ingest(
+    source: str, workdir: Path | None = None, deep_clone: bool = False,
+) -> tuple[RepoMeta, Path]:
     """Entry point: detect URL vs local path and prepare the repo.
 
     Returns (RepoMeta, on-disk path to the repo).
     For a remote source, clones into a temp dir that the caller must clean up.
+    `deep_clone=True` requests enough git history for git-log-based
+    analysis (private-mode community pillar). Default shallow clone is
+    plenty for everything else.
     """
     source = source.strip()
     is_url = source.startswith(("http://", "https://", "git@"))
@@ -169,7 +179,9 @@ def ingest(source: str, workdir: Path | None = None) -> tuple[RepoMeta, Path]:
             owner, name = owner_repo if owner_repo else (None, source.rstrip("/").split("/")[-1])
             clone_url = source
         tmpdir = Path(workdir or tempfile.mkdtemp(prefix="rubric-"))
-        repo_path = clone_repo(clone_url, tmpdir)
+        # Private-mode community signals come from git log; need history.
+        clone_depth = 500 if deep_clone else 1
+        repo_path = clone_repo(clone_url, tmpdir, depth=clone_depth)
     else:
         repo_path = Path(source).expanduser().resolve()
         if not repo_path.exists():
