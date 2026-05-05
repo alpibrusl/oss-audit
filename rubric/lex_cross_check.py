@@ -11,7 +11,7 @@ Two layers are checked:
    subprocess + JSON boundary for `[fs_walk, io]` code, not just
    pure rubric.
 
-Both layers opt-in via `OSS_AUDITOR_LEX_CROSS_CHECK=1`. If the `lex`
+Both layers opt-in via `RUBRIC_LEX_CROSS_CHECK=1`. If the `lex`
 binary isn't on `$PATH`, both silently no-op.
 """
 from __future__ import annotations

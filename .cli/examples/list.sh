@@ -2,7 +2,7 @@
 # Examples for: list
 
 # List the latest 20 audits
-oss-audit list
+rubric list
 
 # List 50 audits as JSON for an agent
-oss-audit list -n 50 --output json
+rubric list -n 50 --output json

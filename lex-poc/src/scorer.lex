@@ -1,5 +1,5 @@
 # Aggregate score + grade — pure functional port of
-# `oss_auditor/reporter/scorer.py::compute_overall`.
+# `rubric/reporter/scorer.py::compute_overall`.
 #
 # Renormalize over `Skipped` pillars only. `Unavailable` pillars
 # keep their weight and contribute 0 — missing data is information,

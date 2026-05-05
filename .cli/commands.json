@@ -1,5 +1,5 @@
 {
-  "name": "oss-audit",
+  "name": "rubric",
   "version": "0.1.0",
   "acli_version": "0.1.0",
   "commands": [
@@ -111,15 +111,15 @@
       "examples": [
         {
           "description": "Audit a remote GitHub repo",
-          "invocation": "oss-audit audit https://github.com/alpibrusl/lex-lang"
+          "invocation": "rubric audit https://github.com/alpibrusl/lex-lang"
         },
         {
           "description": "Audit a local repo, technical pillar only",
-          "invocation": "oss-audit audit . --skip-business --skip-community"
+          "invocation": "rubric audit . --skip-business --skip-community"
         },
         {
           "description": "Get a structured envelope for an agent",
-          "invocation": "oss-audit audit . --skip-business --skip-community --output json"
+          "invocation": "rubric audit . --skip-business --skip-community --output json"
         }
       ],
       "see_also": [
@@ -151,11 +151,11 @@
       "examples": [
         {
           "description": "List the latest 20 audits",
-          "invocation": "oss-audit list"
+          "invocation": "rubric list"
         },
         {
           "description": "List 50 audits as JSON for an agent",
-          "invocation": "oss-audit list -n 50 --output json"
+          "invocation": "rubric list -n 50 --output json"
         }
       ],
       "see_also": [
@@ -171,7 +171,7 @@
           "name": "audit_id",
           "type": "int",
           "required": true,
-          "description": "Audit ID from `oss-audit list`. type:int"
+          "description": "Audit ID from `rubric list`. type:int"
         }
       ],
       "options": [
@@ -187,11 +187,11 @@
       "examples": [
         {
           "description": "Show audit #1 as markdown",
-          "invocation": "oss-audit show 1"
+          "invocation": "rubric show 1"
         },
         {
           "description": "Get the full audit envelope as JSON",
-          "invocation": "oss-audit show 1 --output json"
+          "invocation": "rubric show 1 --output json"
         }
       ],
       "see_also": [
@@ -228,11 +228,11 @@
       "examples": [
         {
           "description": "Serve on default port",
-          "invocation": "oss-audit serve"
+          "invocation": "rubric serve"
         },
         {
           "description": "Serve on a custom host:port",
-          "invocation": "oss-audit serve --host 0.0.0.0 --port 9000"
+          "invocation": "rubric serve --host 0.0.0.0 --port 9000"
         }
       ]
     }

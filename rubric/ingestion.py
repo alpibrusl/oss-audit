@@ -168,7 +168,7 @@ def ingest(source: str, workdir: Path | None = None) -> tuple[RepoMeta, Path]:
             owner_repo = parse_github_url(source)
             owner, name = owner_repo if owner_repo else (None, source.rstrip("/").split("/")[-1])
             clone_url = source
-        tmpdir = Path(workdir or tempfile.mkdtemp(prefix="oss-audit-"))
+        tmpdir = Path(workdir or tempfile.mkdtemp(prefix="rubric-"))
         repo_path = clone_repo(clone_url, tmpdir)
     else:
         repo_path = Path(source).expanduser().resolve()

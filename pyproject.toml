@@ -1,7 +1,7 @@
 [project]
-name = "oss-auditor"
+name = "rubric"
 version = "0.6.0"
-description = "Auditoría integral para proyectos open-source: código, negocio y comunidad"
+description = "Comprehensive audit for software projects: technical, thesis, and community pillars + a verdict layer."
 requires-python = ">=3.10"
 dependencies = [
     "acli-spec>=0.5.0",
@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.scripts]
-oss-audit = "oss_auditor.cli:main"
+rubric = "rubric.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -28,4 +28,4 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["oss_auditor*"]
+include = ["rubric*"]

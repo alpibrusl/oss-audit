@@ -1,4 +1,4 @@
-"""OSS Auditor CLI — `oss-audit` command (ACLI-compliant)."""
+"""Rubric CLI — `rubric` command (ACLI-compliant)."""
 from __future__ import annotations
 
 import time
@@ -29,7 +29,7 @@ from .storage import DEFAULT_DB, get_audit, list_audits, save_audit
 load_dotenv()
 
 app = ACLIApp(
-    name="oss-audit",
+    name="rubric",
     version="0.6.0",
     help="Comprehensive open-source project audit: technical + business + community.",
 )
@@ -51,9 +51,9 @@ def _emit_or_render(
 def _render_audit_summary(report) -> None:
     grade_color = {"platinum": "magenta", "gold": "yellow", "silver": "white",
                    "bronze": "red", "fail": "bright_red"}.get(report.grade, "white")
-    title = "OSS Auditor"
+    title = "Rubric"
     if report.lens != "general":
-        title = f"OSS Auditor — {report.lens} lens"
+        title = f"Rubric — {report.lens} lens"
     console.print()
     console.print(Panel.fit(
         f"[bold]{report.repo.name}[/bold]\n"
@@ -103,11 +103,11 @@ def _render_audit_summary(report) -> None:
 @acli_command(
     examples=[
         ("Audit a remote GitHub repo",
-         "oss-audit audit https://github.com/alpibrusl/lex-lang"),
+         "rubric audit https://github.com/alpibrusl/lex-lang"),
         ("Audit a local repo, technical pillar only",
-         "oss-audit audit . --skip-business --skip-community"),
+         "rubric audit . --skip-business --skip-community"),
         ("Get a structured envelope for an agent",
-         "oss-audit audit . --skip-business --skip-community --output json"),
+         "rubric audit . --skip-business --skip-community --output json"),
     ],
     idempotent=True,
     see_also=["list", "show", "serve"],
@@ -188,8 +188,8 @@ def audit(
 @app.command(name="list")
 @acli_command(
     examples=[
-        ("List the latest 20 audits", "oss-audit list"),
-        ("List 50 audits as JSON for an agent", "oss-audit list -n 50 --output json"),
+        ("List the latest 20 audits", "rubric list"),
+        ("List 50 audits as JSON for an agent", "rubric list -n 50 --output json"),
     ],
     idempotent=True,
     see_also=["audit", "show"],
@@ -229,14 +229,14 @@ def list_cmd(
 @app.command()
 @acli_command(
     examples=[
-        ("Show audit #1 as markdown", "oss-audit show 1"),
-        ("Get the full audit envelope as JSON", "oss-audit show 1 --output json"),
+        ("Show audit #1 as markdown", "rubric show 1"),
+        ("Get the full audit envelope as JSON", "rubric show 1 --output json"),
     ],
     idempotent=True,
     see_also=["list", "audit"],
 )
 def show(
-    audit_id: int = typer.Argument(..., help="Audit ID from `oss-audit list`. type:int"),
+    audit_id: int = typer.Argument(..., help="Audit ID from `rubric list`. type:int"),
     output: OutputFormat = typer.Option(
         OutputFormat.text, help="Output format. type:enum[text|json|table]"),
 ) -> None:
@@ -246,7 +246,7 @@ def show(
     if report is None:
         raise NotFoundError(
             f"No audit exists with id={audit_id}",
-            hint="Run `oss-audit list` to see the available IDs.",
+            hint="Run `rubric list` to see the available IDs.",
         )
     envelope = success_envelope(
         "show", report.model_dump(mode="json"),
@@ -261,10 +261,10 @@ def show(
 @app.command()
 @acli_command(
     examples=[
-        ("Markdown snippet for the latest audit", "oss-audit badge"),
-        ("Static shields.io URL for audit #3", "oss-audit badge 3 --format url"),
+        ("Markdown snippet for the latest audit", "rubric badge"),
+        ("Static shields.io URL for audit #3", "rubric badge 3 --format url"),
         ("JSON endpoint payload to commit to your repo",
-         "oss-audit badge --format endpoint --output json > badge.json"),
+         "rubric badge --format endpoint --output json > badge.json"),
     ],
     idempotent=True,
     see_also=["audit", "list", "show"],
@@ -275,7 +275,7 @@ def badge(
     format_: str = typer.Option(
         "markdown", "--format",
         help="markdown | url | endpoint. type:enum[markdown|url|endpoint]"),
-    label: str = typer.Option("oss-audit", "--label", help="Badge label. type:string"),
+    label: str = typer.Option("rubric", "--label", help="Badge label. type:string"),
     link: str | None = typer.Option(
         None, "--link", help="URL the badge links to (markdown only). type:string"),
     output: OutputFormat = typer.Option(
@@ -288,14 +288,14 @@ def badge(
         if not recent:
             raise NotFoundError(
                 "No audits stored yet.",
-                hint="Run `oss-audit audit <repo>` first.",
+                hint="Run `rubric audit <repo>` first.",
             )
         audit_id = recent[0]["id"]
     report = get_audit(audit_id)
     if report is None:
         raise NotFoundError(
             f"No audit exists with id={audit_id}",
-            hint="Run `oss-audit list` to see available IDs.",
+            hint="Run `rubric list` to see available IDs.",
         )
 
     if format_ == "markdown":
@@ -330,8 +330,8 @@ def badge(
 @app.command()
 @acli_command(
     examples=[
-        ("Show HN candidates from front page", "oss-audit suggest"),
-        ("Recent Show HN posts as JSON", "oss-audit suggest --source showstories --output json"),
+        ("Show HN candidates from front page", "rubric suggest"),
+        ("Recent Show HN posts as JSON", "rubric suggest --source showstories --output json"),
     ],
     idempotent=True,
     see_also=["audit"],
@@ -373,7 +373,7 @@ def suggest(
             table.add_row(str(c.points), str(c.comments), c.url, c.title[:60])
         console.print(table)
         console.print()
-        console.print("[dim]Audit with: oss-audit audit <URL>[/dim]")
+        console.print("[dim]Audit with: rubric audit <URL>[/dim]")
 
     _emit_or_render(envelope, output, render_text)
 
@@ -381,8 +381,8 @@ def suggest(
 @app.command()
 @acli_command(
     examples=[
-        ("Serve on default port", "oss-audit serve"),
-        ("Serve on a custom host:port", "oss-audit serve --host 0.0.0.0 --port 9000"),
+        ("Serve on default port", "rubric serve"),
+        ("Serve on a custom host:port", "rubric serve --host 0.0.0.0 --port 9000"),
     ],
     idempotent=True,
 )
@@ -401,7 +401,7 @@ def serve(
 
 
 def main() -> None:
-    """Entry point for the `oss-audit` script."""
+    """Entry point for the `rubric` script."""
     app.run()
 
 

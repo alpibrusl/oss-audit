@@ -1,5 +1,5 @@
 # Universal technical-pillar detectors — pilot port from
-# `oss_auditor/technical/universal.py`.
+# `rubric/technical/universal.py`.
 #
 # Validates the boundary cost for fs-touching code:
 #   - exercises std.fs.exists (gated by [fs_walk])

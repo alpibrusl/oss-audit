@@ -31,7 +31,7 @@ def run_audit(source: str, skip_business: bool = False,
             progress(label)
 
     step("📥 Ingesting repo...")
-    workdir = Path(tempfile.mkdtemp(prefix="oss-audit-"))
+    workdir = Path(tempfile.mkdtemp(prefix="rubric-"))
     cleanup_needed = False
     try:
         meta, repo_path = ingest(source, workdir=workdir)
@@ -110,7 +110,7 @@ def run_audit(source: str, skip_business: bool = False,
         # through the lex POC implementation. Compares against BASE values
         # (before lens), so disagreements are real drift, not lens
         # artifacts.
-        if os.environ.get("OSS_AUDITOR_LEX_CROSS_CHECK") == "1":
+        if os.environ.get("RUBRIC_LEX_CROSS_CHECK") == "1":
             from .lex_cross_check import (
                 compare, compare_universal, lex_universal, lex_verdict,
             )

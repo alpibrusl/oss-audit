@@ -262,11 +262,11 @@ def _redact_dict(d: dict[str, str], redactions: list[tuple[str, str]]) -> dict[s
 def strip_identifiers(context: dict[str, Any], meta: RepoMeta) -> dict[str, Any]:
     """Return a copy of the context with identity redacted.
 
-    Controlled by OSS_AUDITOR_STRIP_IDENTIFIERS (default: "1"). Set "0"
+    Controlled by RUBRIC_STRIP_IDENTIFIERS (default: "1"). Set "0"
     for debugging — always on by default so publishable audits are free
     from name-based bias.
     """
-    if os.environ.get("OSS_AUDITOR_STRIP_IDENTIFIERS", "1") == "0":
+    if os.environ.get("RUBRIC_STRIP_IDENTIFIERS", "1") == "0":
         return context
 
     redactions = _identifier_redactions(meta)
