@@ -188,6 +188,21 @@ class ClaudeAgentSDKBackend:
             return asyncio.run(asyncio.wait_for(_run(), timeout=self.timeout))
         except asyncio.TimeoutError as e:
             raise RuntimeError(f"Claude Agent SDK: timeout after {self.timeout}s") from e
+        except Exception as e:  # noqa: BLE001 — preserve underlying detail
+            # The SDK wraps the upstream `claude` CLI's stderr in a
+            # generic "message reader" error. Surface whatever string
+            # the SDK produced *plus* a hint that the most common cause
+            # is the underlying CLI failing to authenticate or run.
+            # This keeps Rubric's error message actionable instead of
+            # the cryptic "Fatal error in message reader: Command failed".
+            raise RuntimeError(
+                f"Claude Agent SDK call failed: {e}. "
+                f"Common causes: (1) the `claude` CLI is unauthenticated "
+                f"(run `claude login`); (2) a stale agent session — "
+                f"try setting RUBRIC_BACKEND=anthropic-api with "
+                f"ANTHROPIC_API_KEY; (3) prompt exceeded the model's "
+                f"context window for very large repos."
+            ) from e
 
 
 # ---------- OpenAI-compatible ----------

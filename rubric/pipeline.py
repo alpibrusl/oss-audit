@@ -62,6 +62,15 @@ def run_audit(source: str, skip_business: bool = False,
             report.business.data_status = (
                 "available" if report.business.score > 0 else "unavailable"
             )
+            # Surface the backend-failure case at the top of the run.
+            # analyze_business() catches exceptions and stuffs the
+            # message into BusinessReport.summary; we re-emit it so
+            # the user sees it without inspecting the JSON.
+            if (
+                report.business.data_status == "unavailable"
+                and report.business.summary.startswith("Error calling backend")
+            ):
+                step("⚠️  business pillar failed: " + report.business.summary[:120])
         else:
             report.business.data_status = "skipped"
 
@@ -75,6 +84,13 @@ def run_audit(source: str, skip_business: bool = False,
             report.community.data_status = (
                 "available" if report.community.score > 0 else "unavailable"
             )
+            # Surface the rate-limit case visibly. The community pillar
+            # already attaches a `medium`-severity finding when 403 is
+            # hit; re-emit at the top so users don't have to dig.
+            for f in report.community.findings:
+                if f.title.startswith("GitHub API rate-limited"):
+                    step("⚠️  " + f.title + " — " + (f.recommendation or "set GITHUB_TOKEN"))
+                    break
         else:
             report.community.data_status = "skipped"
 
