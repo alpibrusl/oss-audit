@@ -1,0 +1,190 @@
+{
+  "ok": true,
+  "command": "audit",
+  "data": {
+    "audited_at": "2026-05-05T21:31:08.472009",
+    "repo": {
+      "source": "https://github.com/simonw/datasette",
+      "is_remote": true,
+      "is_gist": false,
+      "owner": "simonw",
+      "name": "datasette",
+      "local_path": "/tmp/rubric-0pbtfb3b/repo",
+      "languages": {
+        "Python": 94.55,
+        "JavaScript": 5.36,
+        "C": 0.09
+      },
+      "primary_language": "Python",
+      "total_files": 139,
+      "total_loc": 43706,
+      "repo_type": "implementation",
+      "repo_type_reason": "43706 LOC indicates a code artifact"
+    },
+    "overall_score": 54.2,
+    "grade": "bronze",
+    "verdict": {
+      "code": "indeterminate",
+      "label": "Indeterminate",
+      "one_liner": "Missing data on at least 2 of the 3 axes (idea / execution / relevance). Verdict suspended until there's more signal.",
+      "idea_band": "n/a",
+      "execution_band": "high",
+      "relevance_band": "n/a",
+      "actions": {
+        "developer": "Insufficient data. Re-audit with all pillars enabled.",
+        "cto": "No basis to decide on adoption. Requires a complete analysis.",
+        "investor": "No articulable thesis. Close the data gaps before evaluating."
+      }
+    },
+    "counterfactuals": [
+      "If the thesis & innovation pillar went from 0 to 30, the verdict would change from `indeterminate` to `pass`."
+    ],
+    "technical": {
+      "score": 88.0,
+      "data_status": "available",
+      "test_coverage": null,
+      "has_ci": true,
+      "has_tests": true,
+      "test_density": 1.151,
+      "has_fuzz_tests": false,
+      "has_property_tests": false,
+      "secrets_found": 0,
+      "vulnerabilities": 0,
+      "lint_issues": 0,
+      "complexity_avg": null,
+      "composability_score": 2,
+      "composability_surfaces": [
+        "Python CLI (project.scripts / entry_points)"
+      ],
+      "tools_run": [
+        "ruff (Python)",
+        "npm-audit (JavaScript)"
+      ],
+      "findings": [],
+      "raw": {
+        "universal": {
+          "has_ci": true,
+          "ci_files": [
+            ".github/workflows/documentation-links.yml",
+            ".github/workflows/push_docker_tag.yml",
+            ".github/workflows/publish.yml",
+            ".github/workflows/tmate-mac.yml",
+            ".github/workflows/test-pyodide.yml",
+            ".github/workflows/stable-docs.yml",
+            ".github/workflows/test-sqlite-support.yml",
+            ".github/workflows/spellcheck.yml",
+            ".github/workflows/deploy-branch-preview.yml",
+            ".github/workflows/test-coverage.yml",
+            ".github/workflows/tmate.yml",
+            ".github/workflows/test.yml",
+            ".github/workflows/deploy-latest.yml",
+            ".github/workflows/prettier.yml"
+          ],
+          "has_tests": true,
+          "test_file_count": 84,
+          "source_file_count": 73,
+          "test_density": 1.151,
+          "has_fuzz_tests": false,
+          "has_property_tests": false,
+          "secrets_count": 0,
+          "has_security_policy": false,
+          "license": "Apache-2.0"
+        },
+        "languages": {
+          "Python": {
+            "language": "Python",
+            "tools": {
+              "ruff": {
+                "available": true,
+                "issues": 0,
+                "by_code": {}
+              },
+              "pip-audit": {
+                "available": false,
+                "hint": "pip install pip-audit"
+              }
+            }
+          },
+          "JavaScript": {
+            "language": "JavaScript/TypeScript",
+            "tools": {
+              "npm-audit": {
+                "available": true,
+                "vulnerabilities": 0,
+                "by_severity": {
+                  "info": 0,
+                  "low": 0,
+                  "moderate": 0,
+                  "high": 0,
+                  "critical": 0,
+                  "total": 0
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "business": {
+      "score": 0.0,
+      "data_status": "skipped",
+      "problem_clarity": 0.0,
+      "execution_vs_ambition": 0.0,
+      "differentiation": 0.0,
+      "market_signals": 0.0,
+      "viability_risks": 0.0,
+      "intellectual_contribution": 0.0,
+      "summary": "",
+      "novelty_summary": "",
+      "nearest_prior_art": [],
+      "strengths": [],
+      "weaknesses": [],
+      "opportunities": [],
+      "developer_view": "",
+      "cto_view": "",
+      "investor_view": "",
+      "mind_changers": [],
+      "raw_analysis": "",
+      "backend": "",
+      "model": ""
+    },
+    "community": {
+      "score": 0.0,
+      "data_status": "unavailable",
+      "stars": 0,
+      "forks": 0,
+      "open_issues": 0,
+      "closed_issues": 0,
+      "contributors": 0,
+      "bus_factor_top1_pct": 0.0,
+      "bus_factor_top3_pct": 0.0,
+      "commits_last_90d": 0,
+      "avg_issue_close_days": null,
+      "last_commit_days_ago": null,
+      "has_releases": false,
+      "agent_readiness_score": 0,
+      "agent_readiness_signals": [],
+      "is_solo_active": false,
+      "commits_per_author_90d": 0.0,
+      "findings": [
+        {
+          "severity": "info",
+          "category": "community",
+          "title": "GitHub API returned status 403",
+          "detail": "Without a token the rate limit is 60 req/h. Set GITHUB_TOKEN for more.",
+          "location": null,
+          "recommendation": null
+        }
+      ]
+    },
+    "executive_summary": "",
+    "top_recommendations": [],
+    "lens": "general",
+    "mode": "public",
+    "saved_id": 3
+  },
+  "meta": {
+    "duration_ms": 1367,
+    "version": "0.6.0"
+  }
+}

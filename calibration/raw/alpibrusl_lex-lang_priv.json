@@ -1,0 +1,186 @@
+{
+  "ok": true,
+  "command": "audit",
+  "data": {
+    "audited_at": "2026-05-05T21:32:07.258408",
+    "repo": {
+      "source": "https://github.com/alpibrusl/lex-lang",
+      "is_remote": true,
+      "is_gist": false,
+      "owner": "alpibrusl",
+      "name": "lex-lang",
+      "local_path": "/tmp/rubric-y1u2w51e/repo",
+      "languages": {
+        "Rust": 99.7,
+        "Python": 0.3
+      },
+      "primary_language": "Rust",
+      "total_files": 164,
+      "total_loc": 39603,
+      "repo_type": "implementation",
+      "repo_type_reason": "39603 LOC indicates a code artifact"
+    },
+    "overall_score": 71.5,
+    "grade": "silver",
+    "verdict": {
+      "code": "pass",
+      "label": "Pass",
+      "one_liner": "Not enough signal on any axis. Pass.",
+      "idea_band": "n/a",
+      "execution_band": "high",
+      "relevance_band": "low",
+      "actions": {
+        "developer": "Skip.",
+        "cto": "Pass.",
+        "investor": "Pass."
+      }
+    },
+    "counterfactuals": [
+      "If the thesis & innovation pillar went from 0 to 30, the verdict would change from `pass` to `ahead-of-its-time`."
+    ],
+    "technical": {
+      "score": 98.0,
+      "data_status": "available",
+      "test_coverage": null,
+      "has_ci": true,
+      "has_tests": true,
+      "test_density": 1.173,
+      "has_fuzz_tests": true,
+      "has_property_tests": false,
+      "secrets_found": 0,
+      "vulnerabilities": 0,
+      "lint_issues": 0,
+      "complexity_avg": null,
+      "composability_score": 6,
+      "composability_surfaces": [
+        "Cargo workspace (multi-crate)",
+        "Rust library (src/lib.rs) @ crates/lex-vcs",
+        "Rust binary ([[bin]] / src/main.rs) @ crates/lex-cli"
+      ],
+      "tools_run": [
+        "clippy (Rust)"
+      ],
+      "findings": [],
+      "raw": {
+        "universal": {
+          "has_ci": true,
+          "ci_files": [
+            ".github/workflows/ci.yml",
+            ".github/workflows/fuzz.yml",
+            ".github/workflows/release.yml"
+          ],
+          "has_tests": true,
+          "test_file_count": 95,
+          "source_file_count": 81,
+          "test_density": 1.173,
+          "has_fuzz_tests": true,
+          "has_property_tests": false,
+          "secrets_count": 0,
+          "has_security_policy": true,
+          "license": "EUPL-1.2"
+        },
+        "languages": {
+          "Rust": {
+            "language": "Rust",
+            "tools": {
+              "cargo-audit": {
+                "available": false,
+                "hint": "cargo install cargo-audit"
+              },
+              "clippy": {
+                "available": true,
+                "warnings": 0,
+                "errors": 0,
+                "exit_code": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "business": {
+      "score": 0.0,
+      "data_status": "skipped",
+      "problem_clarity": 0.0,
+      "execution_vs_ambition": 0.0,
+      "differentiation": 0.0,
+      "market_signals": 0.0,
+      "viability_risks": 0.0,
+      "intellectual_contribution": 0.0,
+      "summary": "",
+      "novelty_summary": "",
+      "nearest_prior_art": [],
+      "strengths": [],
+      "weaknesses": [],
+      "opportunities": [],
+      "developer_view": "",
+      "cto_view": "",
+      "investor_view": "",
+      "mind_changers": [],
+      "raw_analysis": "",
+      "backend": "",
+      "model": ""
+    },
+    "community": {
+      "score": 29.0,
+      "data_status": "available",
+      "stars": 0,
+      "forks": 0,
+      "open_issues": 0,
+      "closed_issues": 0,
+      "contributors": 1,
+      "bus_factor_top1_pct": 100.0,
+      "bus_factor_top3_pct": 100.0,
+      "commits_last_90d": 1,
+      "avg_issue_close_days": null,
+      "last_commit_days_ago": 0,
+      "has_releases": false,
+      "agent_readiness_score": 4,
+      "agent_readiness_signals": [
+        "ACLI skill folder (.cli/)",
+        "Runnable examples folder"
+      ],
+      "is_solo_active": true,
+      "commits_per_author_90d": 1.0,
+      "findings": [
+        {
+          "severity": "info",
+          "category": "community",
+          "title": "Solo-owner internal repo (100.0% top author)",
+          "detail": "Single primary contributor on a private codebase.",
+          "location": null,
+          "recommendation": "Document succession plan; ensure at least one peer reviewer."
+        },
+        {
+          "severity": "low",
+          "category": "process",
+          "title": "No CODEOWNERS file",
+          "detail": "Code-review routing isn't documented.",
+          "location": null,
+          "recommendation": "Add CODEOWNERS so review responsibilities are explicit."
+        },
+        {
+          "severity": "info",
+          "category": "process",
+          "title": "No ADRs or runbooks detected",
+          "detail": "No `docs/adr/` or `runbooks/` folder found.",
+          "location": null,
+          "recommendation": "ADRs document WHY decisions were made; runbooks document HOW to operate the service. Both pay off in a year."
+        }
+      ]
+    },
+    "executive_summary": "",
+    "top_recommendations": [
+      "[Community/low] No CODEOWNERS file: Add CODEOWNERS so review responsibilities are explicit.",
+      "[Community/info] Solo-owner internal repo (100.0% top author): Document succession plan; ensure at least one peer reviewer.",
+      "[Community/info] No ADRs or runbooks detected: ADRs document WHY decisions were made; runbooks document HOW to operate the service. Both pay off in a year."
+    ],
+    "lens": "general",
+    "mode": "private",
+    "saved_id": 1
+  },
+  "meta": {
+    "duration_ms": 39834,
+    "version": "0.6.0"
+  }
+}

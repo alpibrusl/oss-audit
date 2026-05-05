@@ -1,0 +1,382 @@
+{
+  "ok": true,
+  "command": "audit",
+  "data": {
+    "audited_at": "2026-05-05T21:32:49.434824",
+    "repo": {
+      "source": "https://github.com/astral-sh/uv",
+      "is_remote": true,
+      "is_gist": false,
+      "owner": "astral-sh",
+      "name": "uv",
+      "local_path": "/tmp/rubric-565b72nf/repo",
+      "languages": {
+        "Python": 1.77,
+        "C": 0.0,
+        "Rust": 98.2,
+        "JavaScript": 0.03
+      },
+      "primary_language": "Rust",
+      "total_files": 657,
+      "total_loc": 430249,
+      "repo_type": "implementation",
+      "repo_type_reason": "430249 LOC indicates a code artifact"
+    },
+    "overall_score": 54.2,
+    "grade": "bronze",
+    "verdict": {
+      "code": "pass",
+      "label": "Pass",
+      "one_liner": "Not enough signal on any axis. Pass.",
+      "idea_band": "n/a",
+      "execution_band": "high",
+      "relevance_band": "low",
+      "actions": {
+        "developer": "Skip.",
+        "cto": "Pass.",
+        "investor": "Pass."
+      }
+    },
+    "counterfactuals": [
+      "If the thesis & innovation pillar went from 0 to 30, the verdict would change from `pass` to `ahead-of-its-time`."
+    ],
+    "technical": {
+      "score": 70.0,
+      "data_status": "available",
+      "test_coverage": null,
+      "has_ci": true,
+      "has_tests": true,
+      "test_density": 0.58,
+      "has_fuzz_tests": false,
+      "has_property_tests": false,
+      "secrets_found": 34,
+      "vulnerabilities": 0,
+      "lint_issues": 0,
+      "complexity_avg": null,
+      "composability_score": 6,
+      "composability_surfaces": [
+        "Cargo workspace (multi-crate)",
+        "Rust library (src/lib.rs) @ crates/uv-requirements",
+        "Rust binary ([[bin]] / src/main.rs) @ crates/uv-trampoline-builder"
+      ],
+      "tools_run": [
+        "clippy (Rust)"
+      ],
+      "findings": [
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-client/src/registry_client.rs:1690",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-client/src/registry_client.rs:1746",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-client/src/registry_client.rs:1796",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-auth/src/store.rs:493",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-auth/src/middleware.rs:1004",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-auth/src/middleware.rs:1050",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-auth/src/middleware.rs:1164",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-auth/src/middleware.rs:1205",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-auth/src/middleware.rs:1253",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-auth/src/middleware.rs:1293",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-auth/src/middleware.rs:1336",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-auth/src/middleware.rs:1401",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-auth/src/middleware.rs:1466",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-auth/src/middleware.rs:1497",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-auth/src/middleware.rs:2187",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-auth/src/middleware.rs:2282",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-auth/src/middleware.rs:2378",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-auth/src/middleware.rs:2492",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-auth/src/middleware.rs:2524",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "high",
+          "category": "security",
+          "title": "Possible secret: Hardcoded Password",
+          "detail": "Pattern matched in the file.",
+          "location": "crates/uv-auth/src/middleware.rs:2547",
+          "recommendation": "Verify and rotate if it's real. Use environment variables."
+        },
+        {
+          "severity": "medium",
+          "category": "legal",
+          "title": "License not identified or missing",
+          "detail": "Detected license: None",
+          "location": null,
+          "recommendation": "Add an explicit LICENSE (MIT, Apache-2.0, etc.)."
+        }
+      ],
+      "raw": {
+        "universal": {
+          "has_ci": true,
+          "ci_files": [
+            ".github/workflows/check-docs.yml",
+            ".github/workflows/build-release-binaries.yml",
+            ".github/workflows/check-publish.yml",
+            ".github/workflows/check-release.yml",
+            ".github/workflows/ci.yml",
+            ".github/workflows/test-ecosystem.yml",
+            ".github/workflows/build-dev-binaries.yml",
+            ".github/workflows/check-lint.yml",
+            ".github/workflows/check-generated-files.yml",
+            ".github/workflows/test-windows-trampolines.yml",
+            ".github/workflows/publish-mirror.yml",
+            ".github/workflows/test-system.yml",
+            ".github/workflows/publish-versions.yml",
+            ".github/workflows/check-zizmor.yml",
+            ".github/workflows/publish-pypi.yml",
+            ".github/workflows/test-integration.yml",
+            ".github/workflows/publish-crates.yml",
+            ".github/workflows/check-fmt.yml",
+            ".github/workflows/release.yml",
+            ".github/workflows/test-smoke.yml",
+            ".github/workflows/test.yml",
+            ".github/workflows/bench.yml",
+            ".github/workflows/sync-python-releases.yml",
+            ".github/workflows/release-prepare.yml",
+            ".github/workflows/publish-docs.yml",
+            ".github/workflows/build-docker.yml"
+          ],
+          "has_tests": true,
+          "test_file_count": 315,
+          "source_file_count": 543,
+          "test_density": 0.58,
+          "has_fuzz_tests": false,
+          "has_property_tests": false,
+          "secrets_count": 34,
+          "has_security_policy": true,
+          "license": null
+        },
+        "languages": {
+          "Rust": {
+            "language": "Rust",
+            "tools": {
+              "cargo-audit": {
+                "available": false,
+                "hint": "cargo install cargo-audit"
+              },
+              "clippy": {
+                "available": true,
+                "warnings": 0,
+                "errors": 0,
+                "exit_code": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "business": {
+      "score": 0.0,
+      "data_status": "skipped",
+      "problem_clarity": 0.0,
+      "execution_vs_ambition": 0.0,
+      "differentiation": 0.0,
+      "market_signals": 0.0,
+      "viability_risks": 0.0,
+      "intellectual_contribution": 0.0,
+      "summary": "",
+      "novelty_summary": "",
+      "nearest_prior_art": [],
+      "strengths": [],
+      "weaknesses": [],
+      "opportunities": [],
+      "developer_view": "",
+      "cto_view": "",
+      "investor_view": "",
+      "mind_changers": [],
+      "raw_analysis": "",
+      "backend": "",
+      "model": ""
+    },
+    "community": {
+      "score": 29.0,
+      "data_status": "available",
+      "stars": 0,
+      "forks": 0,
+      "open_issues": 0,
+      "closed_issues": 0,
+      "contributors": 1,
+      "bus_factor_top1_pct": 100.0,
+      "bus_factor_top3_pct": 100.0,
+      "commits_last_90d": 1,
+      "avg_issue_close_days": null,
+      "last_commit_days_ago": 0,
+      "has_releases": false,
+      "agent_readiness_score": 4,
+      "agent_readiness_signals": [
+        "Claude Code context (CLAUDE.md/.claude)",
+        "Universal agent context (AGENTS.md)"
+      ],
+      "is_solo_active": true,
+      "commits_per_author_90d": 1.0,
+      "findings": [
+        {
+          "severity": "info",
+          "category": "community",
+          "title": "Solo-owner internal repo (100.0% top author)",
+          "detail": "Single primary contributor on a private codebase.",
+          "location": null,
+          "recommendation": "Document succession plan; ensure at least one peer reviewer."
+        },
+        {
+          "severity": "low",
+          "category": "process",
+          "title": "No CODEOWNERS file",
+          "detail": "Code-review routing isn't documented.",
+          "location": null,
+          "recommendation": "Add CODEOWNERS so review responsibilities are explicit."
+        },
+        {
+          "severity": "info",
+          "category": "process",
+          "title": "No ADRs or runbooks detected",
+          "detail": "No `docs/adr/` or `runbooks/` folder found.",
+          "location": null,
+          "recommendation": "ADRs document WHY decisions were made; runbooks document HOW to operate the service. Both pay off in a year."
+        }
+      ]
+    },
+    "executive_summary": "",
+    "top_recommendations": [
+      "[Technical/high] Possible secret: Hardcoded Password: Verify and rotate if it's real. Use environment variables.",
+      "[Technical/high] Possible secret: Hardcoded Password: Verify and rotate if it's real. Use environment variables.",
+      "[Technical/high] Possible secret: Hardcoded Password: Verify and rotate if it's real. Use environment variables.",
+      "[Technical/high] Possible secret: Hardcoded Password: Verify and rotate if it's real. Use environment variables.",
+      "[Technical/high] Possible secret: Hardcoded Password: Verify and rotate if it's real. Use environment variables."
+    ],
+    "lens": "general",
+    "mode": "private",
+    "saved_id": 2
+  },
+  "meta": {
+    "duration_ms": 3588,
+    "version": "0.6.0"
+  }
+}
