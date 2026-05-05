@@ -31,6 +31,74 @@ SCAN_EXTENSIONS = {".py", ".js", ".ts", ".jsx", ".tsx", ".rs", ".go", ".java",
 IGNORE_DIRS = {".git", "node_modules", "target", "dist", "build",
                "__pycache__", ".venv", "venv", "vendor"}
 
+# Directory-name fragments that mean "this is test/example/docs context,
+# not production code". Matches in these contexts are nearly always
+# fixtures or placeholders, not real secrets. Used by the secret
+# scanner to demote (or skip) regex hits.
+NON_PROD_DIR_PARTS = {
+    "test", "tests", "testing", "spec", "specs", "__tests__",
+    "fuzz", "fuzz_targets", "examples", "example", "fixtures", "fixture",
+    "docs", "doc", "documentation", "demo", "demos", "samples", "sample",
+    "tutorials", "tutorial",
+}
+
+# Tokens that look like secrets to a regex but obviously aren't.
+SECRET_PLACEHOLDERS = {
+    "changeme", "change-me", "change_me", "your-password", "your_password",
+    "your-password-here", "yourpasswordhere", "password123", "supersecret",
+    "examplepassword", "example-password", "placeholder", "redacted",
+    "xxxxxxxx", "********", "000000000", "secret123", "test-only",
+    "testpassword", "fakepassword", "dummypassword",
+}
+
+
+def _is_non_prod_path(rel_path: Path) -> bool:
+    """True if any path segment is a test/example/docs directory."""
+    parts = {p.lower() for p in rel_path.parts}
+    return bool(parts & NON_PROD_DIR_PARTS)
+
+
+def _looks_like_placeholder(value: str) -> bool:
+    """True if the matched value is obviously a placeholder, not a real secret."""
+    v = value.strip().strip("'\"").lower()
+    if v in SECRET_PLACEHOLDERS:
+        return True
+    # Repeated character: "aaaaaaaa", "00000000", "********".
+    if len(set(v)) <= 2 and len(v) >= 8:
+        return True
+    return False
+
+
+def _is_in_test_block(content: str, match_start: int, ext: str) -> bool:
+    """Heuristic: is the match inside an inline test block?
+
+    Rust convention puts unit tests at the bottom of the source file
+    inside `#[cfg(test)] mod tests { ... }`. Python convention is
+    less codified, but `class Test` / `def test_` near the match is
+    a strong signal. Scans only the content up to the match — cheap.
+    """
+    head = content[:match_start]
+    if ext == ".rs":
+        # Rust: any #[cfg(test)] before the match means we're past the
+        # boundary into test code.
+        if "#[cfg(test)]" in head:
+            return True
+        # Some crates use the form `mod tests {` without the cfg attr.
+        if re.search(r"\bmod\s+tests?\s*\{", head):
+            return True
+    elif ext == ".py":
+        # Python: a `class Test` or `def test_` defined before the
+        # match suggests we're inside a test block. Coarse but cheap.
+        if re.search(r"^\s*class\s+Test\w*\s*[\(:]", head, re.MULTILINE):
+            return True
+        if re.search(r"^\s*def\s+test_\w+\s*\(", head, re.MULTILINE):
+            return True
+    elif ext in (".js", ".ts", ".jsx", ".tsx"):
+        # JS/TS: `describe(`, `test(`, `it(` blocks before the match.
+        if re.search(r"^\s*(?:describe|test|it)\s*\(", head, re.MULTILINE):
+            return True
+    return False
+
 
 def has_command(cmd: str) -> bool:
     return shutil.which(cmd) is not None
@@ -175,8 +243,26 @@ def _scan_secrets_gitleaks(repo_path: Path) -> tuple[int, list[Finding]]:
 
 
 def _scan_secrets_regex(repo_path: Path) -> tuple[int, list[Finding]]:
-    findings: list[Finding] = []
-    count = 0
+    """Regex-based secret scan with context-aware noise reduction.
+
+    For each match: skip when (a) the file is in a test/example/docs
+    directory AND the matched value looks like a placeholder, or
+    (b) the matched value is a recognized placeholder regardless of
+    location, or (c) it's inside an inline test block (Rust
+    `#[cfg(test)]`, Python `def test_*`, JS/TS `describe(`). Demote
+    severity to `low` for matches in non-prod paths or test blocks
+    — they stay visible but don't penalize the score.
+
+    Returns (high_count, findings). Findings are capped at 20 with
+    all `high` severity entries surfaced first so the cap can't bury
+    real prod-code leaks under fixture/test noise.
+    """
+    high_findings: list[Finding] = []
+    low_findings: list[Finding] = []
+    # Returned count covers ONLY high-severity matches. Low-severity
+    # (non-prod path / test block) matches stay as findings for
+    # visibility but don't penalize the technical score.
+    high_count = 0
     for root, dirs, files in os.walk(repo_path):
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
         for f in files:
@@ -185,24 +271,43 @@ def _scan_secrets_regex(repo_path: Path) -> tuple[int, list[Finding]]:
                 continue
             fpath = Path(root) / f
             try:
+                rel = fpath.relative_to(repo_path)
+            except ValueError:
+                continue
+            non_prod = _is_non_prod_path(rel)
+            try:
                 with open(fpath, "r", encoding="utf-8", errors="ignore") as fh:
                     content = fh.read(500_000)  # per-file cap
             except OSError:
                 continue
             for pattern, label in SECRET_PATTERNS:
                 for m in re.finditer(pattern, content):
-                    count += 1
-                    if len(findings) < 20:
-                        line_num = content[:m.start()].count("\n") + 1
-                        findings.append(Finding(
-                            severity="high",
-                            category="security",
-                            title=f"Possible secret: {label}",
-                            detail="Pattern matched in the file.",
-                            location=f"{fpath.relative_to(repo_path)}:{line_num}",
-                            recommendation="Verify and rotate if it's real. Use environment variables.",
-                        ))
-    return count, findings
+                    matched = m.group(0)
+                    if _looks_like_placeholder(matched):
+                        continue  # not a finding at all
+                    in_test_block = _is_in_test_block(content, m.start(), ext)
+                    if non_prod or in_test_block:
+                        severity = "low"
+                        where = "non-prod path" if non_prod else "test block"
+                        title_prefix = f"Possible secret in {where}"
+                        bucket = low_findings
+                    else:
+                        severity = "high"
+                        title_prefix = "Possible secret"
+                        high_count += 1
+                        bucket = high_findings
+                    line_num = content[:m.start()].count("\n") + 1
+                    bucket.append(Finding(
+                        severity=severity,
+                        category="security",
+                        title=f"{title_prefix}: {label}",
+                        detail="Pattern matched in the file.",
+                        location=f"{rel}:{line_num}",
+                        recommendation="Verify and rotate if it's real. Use environment variables.",
+                    ))
+    # Surface all highs first, fill remaining slots with lows up to 20 total.
+    capped = high_findings + low_findings[: max(0, 20 - len(high_findings))]
+    return high_count, capped[:20]
 
 
 def detect_security_md(repo_path: Path) -> bool:
