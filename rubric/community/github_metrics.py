@@ -73,14 +73,44 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
     with httpx.Client() as client:
         status, repo_data = _get(client, f"/repos/{meta.owner}/{meta.name}")
         if status != 200 or not isinstance(repo_data, dict):
+            # Status 403 = rate-limited or auth required; both fixable
+            # with GITHUB_TOKEN. Surface as `medium` severity with a
+            # concrete remediation so the user sees it in the top
+            # recommendations, not buried in info-level chatter.
+            has_token = bool(os.environ.get("GITHUB_TOKEN"))
+            if status == 403:
+                title = "GitHub API rate-limited (HTTP 403)"
+                if has_token:
+                    detail = (
+                        "Even with GITHUB_TOKEN set, the request was refused. "
+                        "Possible causes: token lacks scope, IP-level limit, "
+                        "or token expired."
+                    )
+                    rec = "Verify GITHUB_TOKEN has `public_repo` scope (or `repo` for private)."
+                else:
+                    detail = (
+                        "Anonymous GitHub API requests are limited to 60/h "
+                        "and frequently hit 403 sooner. The community pillar "
+                        "couldn't fetch any data; the audit is effectively "
+                        "running on technical signals only."
+                    )
+                    rec = "Set GITHUB_TOKEN=<your-PAT> to lift the rate limit (5000/h authenticated)."
+                severity = "medium"
+            else:
+                title = f"GitHub API returned status {status}"
+                detail = (
+                    "Network or upstream issue reaching api.github.com. "
+                    "The community pillar has no data for this audit."
+                )
+                rec = "Re-run when the API is reachable."
+                severity = "info"
             return CommunityReport(
                 score=float(ar_score),
                 agent_readiness_score=ar_score,
                 agent_readiness_signals=ar_signals,
                 findings=[Finding(
-                    severity="info", category="community",
-                    title=f"GitHub API returned status {status}",
-                    detail="Without a token the rate limit is 60 req/h. Set GITHUB_TOKEN for more.",
+                    severity=severity, category="community",
+                    title=title, detail=detail, recommendation=rec,
                 )],
             )
 
