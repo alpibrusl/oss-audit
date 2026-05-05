@@ -31,7 +31,7 @@ the same fixtures.
 | `lex-poc/src/models.lex`    | Types only. No imports. |
 | `lex-poc/src/scorer.lex`    | `compute_overall` + grade cap. Imports `./models`. |
 | `lex-poc/src/verdict.lex`   | `compute_verdict` + 8-verdict matrix. Imports `./models`. |
-| `lex-poc/src/main.lex`      | Demo runner for the rubric. |
+| `lex-poc/src/main.lex`      | Demo runner (`main`) + `std.test` assertion suite (`run_tests`) covering the four canonical scenarios from the Python sanity matrix. |
 | `lex-poc/src/adapter.lex`   | `cross_check(report)` — single entry point the Python pipeline calls for the **rubric** cross-check. |
 | `lex-poc/src/universal.lex` | `cross_check_universal(repo)` — pilot port of license + SECURITY.md detectors using `std.fs` + `std.io`. Validates the boundary for fs-touching code, not just pure rubric. |
 
@@ -161,8 +161,22 @@ git clone --depth 1 https://github.com/alpibrusl/lex-lang.git /tmp/lex-lang
 export PATH="/tmp/lex-lang/target/release:$PATH"
 
 lex check lex-poc/src/main.lex
-lex run --allow-effects io lex-poc/src/main.lex main
+lex run --allow-effects io lex-poc/src/main.lex main        # demo: print each scenario
+lex run --allow-effects io lex-poc/src/main.lex run_tests   # std.test suite — exits 0 if all pass
 ```
 
 About 60 seconds to build the toolchain on a fresh box, then sub-second
 to type-check and run the POC.
+
+`run_tests` exercises `std.test` (#164) on the canonical scenarios:
+
+```
+$ lex run --allow-effects io lex-poc/src/main.lex run_tests
+✓ only-technical
+✓ tech+business
+✓ full-3-axes
+✓ biz-unavailable
+0
+```
+
+Failure count returns from `run_tests` so a CI step can `[[ $(...) == 0 ]]`.
