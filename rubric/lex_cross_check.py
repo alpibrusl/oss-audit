@@ -121,8 +121,13 @@ def compare(report: AuditReport, lex_result: dict) -> list[str]:
 # ---------- universal-detector cross-check (pilot) ---------------
 
 def lex_universal(repo_path: Path | str) -> dict | None:
-    """Run lex's `cross_check_universal` over the repo. Returns
-    {'license': str, 'has_security_md': bool} or None on any failure.
+    """Run lex's `cross_check_universal` over the repo.
+
+    Returns a dict with these keys, or None on failure:
+      license            (str)        — classified from LICENSE file
+      has_security_md    (bool)       — SECURITY.md presence
+      manifest_license   (str)        — from pyproject.toml/Cargo.toml ("None" if absent)
+      ci_security_tools  (list[str])  — security tools mentioned in .github/workflows/*.yml
     """
     if shutil.which(LEX_BINARY) is None or not UNIVERSAL_PATH.exists():
         return None
@@ -147,11 +152,14 @@ def lex_universal(repo_path: Path | str) -> dict | None:
         parsed = json.loads(result.stdout)
     except json.JSONDecodeError:
         return None
-    if not isinstance(parsed, dict) or not {"license", "has_security_md"} <= parsed.keys():
+    required = {"license", "has_security_md", "manifest_license", "ci_security_tools"}
+    if not isinstance(parsed, dict) or not required <= parsed.keys():
         return None
     return {
-        "license":         parsed["license"],
-        "has_security_md": bool(parsed["has_security_md"]),
+        "license":           parsed["license"],
+        "has_security_md":   bool(parsed["has_security_md"]),
+        "manifest_license":  parsed["manifest_license"],
+        "ci_security_tools": list(parsed["ci_security_tools"]),
     }
 
 

@@ -137,7 +137,9 @@ def run_audit(source: str, skip_business: bool = False,
                     step("⚠️  lex/python rubric disagree: " + "; ".join(diffs))
                 else:
                     step("✓ lex cross-check (rubric): agree")
-            # Universal detectors pilot — license + SECURITY.md.
+            # Universal detectors pilot — license + SECURITY.md (cross-check),
+            # plus manifest_license + ci_security_tools (lex-only signals
+            # absorbed into the technical pillar's findings).
             if not skip_technical and not is_proposal:
                 lex_u = lex_universal(repo_path)
                 if lex_u is not None:
@@ -149,6 +151,48 @@ def run_audit(source: str, skip_business: bool = False,
                         step("⚠️  lex/python universal disagree: " + "; ".join(udiffs))
                     else:
                         step("✓ lex cross-check (universal): agree")
+                    # Lex-only signals — Python doesn't compute these yet,
+                    # so they're additive findings rather than cross-check
+                    # diffs. Stash on technical.raw for transparency and
+                    # surface as findings.
+                    from .models import Finding
+                    manifest_lic = lex_u.get("manifest_license", "None")
+                    ci_tools = lex_u.get("ci_security_tools", [])
+                    report.technical.raw.setdefault("lex_signals", {})[
+                        "manifest_license"
+                    ] = manifest_lic
+                    report.technical.raw["lex_signals"]["ci_security_tools"] = ci_tools
+
+                    # Manifest-license vs LICENSE-file disagreement is a
+                    # real legal/process bug (saying "MIT" in Cargo.toml
+                    # while the LICENSE file is Apache, or vice versa).
+                    if manifest_lic != "None" and py_lic and py_lic != "Unknown":
+                        if manifest_lic != py_lic:
+                            report.technical.findings.append(Finding(
+                                severity="medium", category="legal",
+                                title="Manifest license disagrees with LICENSE file",
+                                detail=(
+                                    f"LICENSE file classified as `{py_lic}`; "
+                                    f"manifest declares `{manifest_lic}`. "
+                                    "These should match."
+                                ),
+                                recommendation="Reconcile the manifest's license field with the LICENSE file.",
+                            ))
+                    # No security tools detected in CI is a `low` finding —
+                    # not always wrong (small projects don't need cargo
+                    # audit in CI), but worth flagging.
+                    if not ci_tools:
+                        report.technical.findings.append(Finding(
+                            severity="low", category="security",
+                            title="No security tools detected in CI workflows",
+                            detail=(
+                                "Workflows under `.github/workflows/` don't "
+                                "mention any of: cargo audit, pip-audit, "
+                                "npm audit, govulncheck, gitleaks, trivy, "
+                                "snyk, codeql, bandit, semgrep, dependabot."
+                            ),
+                            recommendation="Add a dependency / secret scan to CI.",
+                        ))
 
         # Second pass: apply the user's chosen lens.
         if lens.name != "general":
