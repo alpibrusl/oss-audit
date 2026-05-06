@@ -25,6 +25,11 @@ from ..models import CommunityReport, Finding, RepoMeta
 from .agent_readiness import score_agent_readiness
 
 
+def _is_shallow_clone(repo_path: Path) -> bool:
+    """Return True if the repo is a shallow clone (`.git/shallow` exists)."""
+    return (repo_path / ".git" / "shallow").is_file()
+
+
 def _git_log(repo_path: Path, since: str | None = None, limit: int = 5000) -> list[dict]:
     """Run git log and parse out (sha, author_email, ts) per commit. No-merge."""
     args = ["git", "log", f"-n{limit}", "--pretty=format:%H|%ae|%at", "--no-merges"]
@@ -69,6 +74,23 @@ def audit_community_internal(meta: RepoMeta, repo_path: Path) -> CommunityReport
     ar_score, ar_signals = score_agent_readiness(repo_path)
 
     # ----- git log signals -----
+    if _is_shallow_clone(repo_path):
+        # Heuristic: a depth-1 clone collapses every git-log signal to
+        # "1 contributor, 100% bus factor" regardless of the actual
+        # repo. Surface that explicitly so the report reflects "we
+        # don't know" instead of "the audited repo is solo-author".
+        findings.append(Finding(
+            severity="info", category="community",
+            title="Shallow clone — community signals from git log unreliable",
+            detail=(
+                "The local clone is shallow (only the most recent commit is "
+                "present). Re-clone with `git fetch --unshallow` (or run "
+                "rubric on a full local checkout) to get accurate "
+                "contributor / recency / bus-factor signals."
+            ),
+            recommendation="Audit a full clone for accurate private-mode signals.",
+        ))
+
     commits_90d = _git_log(repo_path, since="90.days")
     commits_all = _git_log(repo_path)
 
