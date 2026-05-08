@@ -1,5 +1,5 @@
-# Lens-aware overall scoring — port of `rubric/reporter/lens.py` +
-# `rubric/reporter/scorer.py::compute_overall(lens=...)`.
+# Lens-aware overall scoring + lens-guard verdict downgrade —
+# port of `rubric/reporter/lens.py` + `rubric/reporter/scorer.py::compute_overall(lens=...)`.
 #
 # The base scorer (`scorer.lex::compute_overall`) hardcodes the
 # general-lens weights (0.40 / 0.35 / 0.25). When a user picks
@@ -8,21 +8,28 @@
 # remixing how technical / business / community contribute without
 # changing the underlying signals.
 #
+# The security perspective adds a verdict guard: any technical
+# `critical` finding downgrades the verdict by one step
+# (`bet-on-it -> worth-helping`, etc.). Calibration-sensitive: the
+# downgrade map itself is what drifts.
+#
 # Calibration-sensitive: weight changes between Python and lex would
 # drift silently today. This port adds the cross-check.
 #
-# The lens-guard verdict downgrade (`require_no_critical` security
-# gate) lives in a separate follow-up so this PR stays focused.
-#
-# Exposed entry point:
-#   compute_overall_with_lens(report, lens_name)        -> Outcome
-#   cross_check_lens_score(report, lens_name)           -> Outcome
+# Exposed entry points:
+#   compute_overall_with_lens(report, lens_name)              -> Outcome
+#   apply_lens_guard_code(verdict_code, has_critical, lens_name)
+#                                                             -> Str
+#   cross_check_lens_score(report, lens_name)                 -> Outcome
+#   cross_check_lens_guard(verdict_code, has_critical, lens_name)
+#                                                             -> { code }
 #
 # `lens_name` accepts: general / developer / cto / investor / security / maintainer.
 # Unknown names fall back to general.
 
 import "std.float" as float
 import "std.int"   as int
+import "std.list"  as list
 
 import "./models"  as m
 import "./scorer"  as base
@@ -114,4 +121,54 @@ fn cross_check_lens_score(
     Fail     => "fail",
   }
   { grade: g, score: outcome.score }
+}
+
+
+# --- lens-guard verdict downgrade --------------------------------
+#
+# Today the only lens with `require_no_critical: True` is `security`.
+# If any technical finding has severity `critical`, the base verdict
+# code gets downgraded one step. The label / one_liner / actions
+# rewrites in Python are presentation-only and not cross-checked.
+
+fn _has_no_critical_guard(lens_name :: Str) -> Bool {
+  lens_name == "security"
+}
+
+fn _downgrade_table() -> List[(Str, Str)] {
+  [
+    ("bet-on-it",           "worth-helping"),
+    ("worth-helping",       "promising-prototype"),
+    ("ahead-of-its-time",   "incomplete-thesis"),
+    ("promising-prototype", "incomplete-thesis"),
+    ("solid-commodity",     "incomplete-thesis"),
+  ]
+}
+
+# Anything not in the map (incomplete-thesis, indeterminate,
+# vague-with-traction) doesn't downgrade — Python returns the
+# original verdict via `DOWNGRADE_MAP.get(code) is None` guard.
+fn _downgrade(code :: Str) -> Str {
+  list.fold(_downgrade_table(), code,
+    fn (acc :: Str, p :: (Str, Str)) -> Str {
+      match p {
+        (k, v) => if acc == code and k == code { v } else { acc },
+      }
+    })
+}
+
+fn apply_lens_guard_code(
+  verdict_code :: Str, has_critical :: Bool, lens_name :: Str,
+) -> Str {
+  if (not _has_no_critical_guard(lens_name)) or (not has_critical) {
+    verdict_code
+  } else {
+    _downgrade(verdict_code)
+  }
+}
+
+fn cross_check_lens_guard(
+  verdict_code :: Str, has_critical :: Bool, lens_name :: Str,
+) -> { code :: Str } {
+  { code: apply_lens_guard_code(verdict_code, has_critical, lens_name) }
 }

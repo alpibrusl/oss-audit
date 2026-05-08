@@ -532,6 +532,51 @@ def compare_lens_score(
     return diffs
 
 
+def lex_lens_guard(
+    verdict_code: str, has_critical: bool, lens_name: str,
+) -> str | None:
+    """Run lex's `cross_check_lens_guard` to compute the post-guard verdict code.
+
+    Pure (no fs / proc / net effects). Inputs are exactly what Python's
+    `apply_lens_guard` looks at — base verdict code, the boolean
+    `has_critical` over technical findings, and the lens name. The
+    label / one_liner / actions rewrites in Python aren't compared
+    (presentation, not calibration).
+    """
+    if shutil.which(LEX_BINARY) is None or not LENS_SCORER_PATH.exists():
+        return None
+    try:
+        result = subprocess.run(
+            [
+                LEX_BINARY, "run", str(LENS_SCORER_PATH),
+                "cross_check_lens_guard",
+                json.dumps(verdict_code),
+                json.dumps(bool(has_critical)),
+                json.dumps(lens_name),
+            ],
+            capture_output=True, text=True, timeout=TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        parsed = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(parsed, dict) or "code" not in parsed:
+        return None
+    return str(parsed["code"])
+
+
+def compare_lens_guard(py_code: str, lex_code: str) -> list[str]:
+    """Diff Python's post-guard verdict code vs lex's."""
+    if py_code != lex_code:
+        return [f"code: python={py_code!r} lex={lex_code!r}"]
+    return []
+
+
 def compare_composability(
     py_score: int, py_surfaces: list[str], lex_result: dict,
 ) -> list[str]:
