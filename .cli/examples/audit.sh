@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Examples for: audit
 
-# Audit a remote GitHub repo
-rubric audit https://github.com/alpibrusl/lex-lang
+# Find network calls
+lex audit --effect net examples
 
-# Audit a local repo, technical pillar only
-rubric audit . --skip-business --skip-community
+# Find a host as JSON
+lex audit --host api.example.com --json src
 
-# Get a structured envelope for an agent
-rubric audit . --skip-business --skip-community --output json
+# Persist effect audits
+lex audit --effect fs_write --store ~/.lex/store src

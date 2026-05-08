@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Examples for: serve
 
-# Serve on default port
-rubric serve
+# Start with defaults
+lex serve
 
-# Serve on a custom host:port
-rubric serve --host 0.0.0.0 --port 9000
+# Pin port + store
+lex serve --port 8080 --store /var/lex

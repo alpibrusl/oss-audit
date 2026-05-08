@@ -1,43 +1,151 @@
-# rubric
+# lex
 
-Version: 0.1.0
+Version: 0.3.0
 ACLI version: 0.1.0
 
 ## Commands
 
-### introspect
+### parse
 
-Output the full command tree as JSON for agent consumption.
+print canonical AST as JSON
 
-### version
+Idempotent: true
 
-Show version information.
+### check
 
-### skill
+type-check; exit 0 or print errors
 
-Generate a SKILL.md (agentskills.io) file for agent bootstrapping.
+Idempotent: true
 
-### audit
+### run
 
-Audita un repositorio open-source (técnico + negocio + comunidad).
+execute fn under capability policy (args parsed as JSON)
 
-Idempotent: True
+Idempotent: false
 
-### list
+### hash
 
-Lista las auditorías guardadas.
+print canonical SigId/StageId hashes for each function
 
-Idempotent: True
+Idempotent: true
 
-### show
+### blame
 
-Muestra una auditoría guardada.
+show each fn's stage history from the store
 
-Idempotent: True
+Idempotent: true
+
+### publish
+
+publish each stage in a file to the store as Draft
+
+Idempotent: false
+
+### store
+
+browse the content-addressed code store
+
+### stage
+
+print stage info, or list attestations for a stage
+
+Idempotent: true
+
+### attest
+
+cross-stage attestation queries (CI / dashboards)
+
+### trace
+
+print a saved execution trace tree as JSON
+
+Idempotent: true
+
+### replay
+
+re-execute with effect overrides keyed by NodeId
+
+Idempotent: false
+
+### diff
+
+first NodeId where two execution traces diverge
+
+Idempotent: true
 
 ### serve
 
-Lanza la web local para navegar el histórico de auditorías.
+start the agent API HTTP server
 
-Idempotent: True
+Idempotent: false
+
+### conformance
+
+run all JSON test descriptors under a directory
+
+Idempotent: true
+
+### spec
+
+Spec proof checker (randomized + SMT-LIB export)
+
+### agent-tool
+
+have an LLM emit a Lex tool body, run it under declared effects
+
+Idempotent: false
+
+### tool-registry
+
+runtime tool registration over HTTP
+
+### audit
+
+structural code search by effect / call / hostname / AST kind
+
+Idempotent: true
+
+### ast-diff
+
+AST-native diff: added/removed/renamed/modified fns + body patches
+
+Idempotent: true
+
+### ast-merge
+
+three-way structural merge with structured JSON conflicts
+
+Idempotent: false
+
+### branch
+
+snapshot branches in lex-store (tier-1 agent-native VC)
+
+### store-merge
+
+three-way merge between two branches in the store
+
+Idempotent: false
+
+### merge
+
+stateful agent-driven merge (CLI mirror of /v1/merge/*)
+
+### log
+
+show the merge journal of a branch (top-level alias for `lex branch log`)
+
+Idempotent: true
+
+### repl
+
+interactive evaluator (Lex source line-by-line)
+
+Idempotent: false
+
+### watch
+
+re-run check or run on file save (agent inner loop)
+
+Idempotent: false
 
