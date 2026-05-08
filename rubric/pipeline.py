@@ -128,8 +128,10 @@ def run_audit(source: str, skip_business: bool = False,
         # artifacts.
         if os.environ.get("RUBRIC_LEX_CROSS_CHECK") == "1":
             from .lex_cross_check import (
-                compare, compare_ingest, compare_ingest_io, compare_universal,
-                lex_ingest, lex_ingest_io, lex_universal, lex_verdict,
+                compare, compare_ingest, compare_ingest_io,
+                compare_tech_score, compare_universal,
+                lex_ingest, lex_ingest_io, lex_tech_score,
+                lex_universal, lex_verdict,
             )
             lex_r = lex_verdict(report)
             if lex_r is not None:
@@ -166,6 +168,19 @@ def run_audit(source: str, skip_business: bool = False,
                     step("⚠️  lex/python ingest-io disagree: " + "; ".join(iiodiffs))
                 else:
                     step("✓ lex cross-check (ingest-io): agree")
+            # Technical-score cross-check — pure scoring algorithm
+            # over the signals runner.py just computed. Catches
+            # threshold / weight drift between the two scorers.
+            if not skip_technical and not is_proposal:
+                signals = report.technical.raw.get("signals")
+                if signals is not None:
+                    lex_ts = lex_tech_score(signals)
+                    if lex_ts is not None:
+                        tsdiffs = compare_tech_score(report.technical.score, lex_ts)
+                        if tsdiffs:
+                            step("⚠️  lex/python tech-score disagree: " + "; ".join(tsdiffs))
+                        else:
+                            step("✓ lex cross-check (tech-score): agree")
             # Universal detectors pilot — license + SECURITY.md (cross-check),
             # plus manifest_license + ci_security_tools (lex-only signals
             # absorbed into the technical pillar's findings).
