@@ -128,7 +128,8 @@ def run_audit(source: str, skip_business: bool = False,
         # artifacts.
         if os.environ.get("RUBRIC_LEX_CROSS_CHECK") == "1":
             from .lex_cross_check import (
-                compare, compare_universal, lex_universal, lex_verdict,
+                compare, compare_ingest, compare_universal,
+                lex_ingest, lex_universal, lex_verdict,
             )
             lex_r = lex_verdict(report)
             if lex_r is not None:
@@ -137,6 +138,17 @@ def run_audit(source: str, skip_business: bool = False,
                     step("⚠️  lex/python rubric disagree: " + "; ".join(diffs))
                 else:
                     step("✓ lex cross-check (rubric): agree")
+            # Pure-ingestion cross-check — URL parsing only. Cheap
+            # subprocess (no fs / no proc effects), exercises the
+            # GitHub + gist regex paths against the same source the
+            # Python ingest just resolved.
+            lex_i = lex_ingest(meta.source, meta.total_loc, 0, False)
+            if lex_i is not None:
+                idiffs = compare_ingest(meta.source, lex_i)
+                if idiffs:
+                    step("⚠️  lex/python ingest disagree: " + "; ".join(idiffs))
+                else:
+                    step("✓ lex cross-check (ingest): agree")
             # Universal detectors pilot — license + SECURITY.md (cross-check),
             # plus manifest_license + ci_security_tools (lex-only signals
             # absorbed into the technical pillar's findings).
