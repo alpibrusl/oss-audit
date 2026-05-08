@@ -31,6 +31,7 @@ INGESTION_PATH       = LEX_POC_ROOT / "ingestion.lex"
 INGESTION_IO_PATH    = LEX_POC_ROOT / "ingestion_io.lex"
 TECH_SCORE_PATH      = LEX_POC_ROOT / "tech_score.lex"
 COMMUNITY_SCORE_PATH = LEX_POC_ROOT / "community_score.lex"
+COMPOSABILITY_PATH   = LEX_POC_ROOT / "composability.lex"
 TIMEOUT_SECONDS = 10
 
 
@@ -435,6 +436,67 @@ def compare_community_score(py_score: float, lex_score: float) -> list[str]:
     if abs(py_score - lex_score) > 0.05:
         return [f"score: python={py_score} lex={lex_score}"]
     return []
+
+
+# ---------- composability cross-check (pilot) -------------------
+
+def lex_composability(repo_path: Path | str) -> dict | None:
+    """Run lex's `cross_check_composability` over the repo on disk.
+
+    Walks pyproject.toml / Cargo.toml / package.json / etc. with
+    `[fs_walk, io]` and returns the detected surfaces + capped score.
+
+    Returns a dict with these keys, or None on failure:
+      score    (int)        — `min(len(surfaces) * 2, 10)`
+      surfaces (list[str])  — same order Python produces
+    """
+    if shutil.which(LEX_BINARY) is None or not COMPOSABILITY_PATH.exists():
+        return None
+    repo = str(Path(repo_path).resolve())
+    try:
+        result = subprocess.run(
+            [
+                LEX_BINARY, "run",
+                "--allow-effects", "fs_walk,io",
+                "--allow-fs-read", repo,
+                str(COMPOSABILITY_PATH), "cross_check_composability",
+                json.dumps(repo),
+            ],
+            capture_output=True, text=True, timeout=TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        parsed = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(parsed, dict) or "score" not in parsed or "surfaces" not in parsed:
+        return None
+    return {
+        "score":    int(parsed["score"]),
+        "surfaces": list(parsed["surfaces"]),
+    }
+
+
+def compare_composability(
+    py_score: int, py_surfaces: list[str], lex_result: dict,
+) -> list[str]:
+    """Diff Python's composability output vs lex's.
+
+    Compares both the score and the surface list. Order matters —
+    both sides walk the same detector list in the same order, so a
+    diff in order is real signal (likely a candidate-roots traversal
+    bug).
+    """
+    diffs: list[str] = []
+    if py_score != lex_result["score"]:
+        diffs.append(f"score: python={py_score} lex={lex_result['score']}")
+    if py_surfaces != lex_result["surfaces"]:
+        diffs.append(f"surfaces: python={py_surfaces!r} lex={lex_result['surfaces']!r}")
+    return diffs
 
 
 def compare_ingest(url: str, lex_result: dict) -> list[str]:
