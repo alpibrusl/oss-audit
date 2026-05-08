@@ -37,6 +37,7 @@ AGENT_READINESS_PATH = LEX_POC_ROOT / "agent_readiness.lex"
 HN_SOURCE_PATH       = LEX_POC_ROOT / "hn_source.lex"
 LANG_DISPATCH_PATH   = LEX_POC_ROOT / "lang_dispatch.lex"
 GH_METRICS_PATH      = LEX_POC_ROOT / "gh_metrics.lex"
+BUSINESS_SCORE_PATH  = LEX_POC_ROOT / "business_score.lex"
 TIMEOUT_SECONDS = 10
 
 
@@ -365,6 +366,53 @@ def lex_tech_score(signals: dict) -> float | None:
     if not isinstance(parsed, dict) or "score" not in parsed:
         return None
     return float(parsed["score"])
+
+
+# ---------- business-score cross-check (pilot) ------------------
+
+def lex_business_score(signals: dict) -> float | None:
+    """Run lex's `cross_check_business_score` over the 6 sub-scores.
+
+    Pure (no fs / proc / net effects). Validates the v0.5 weight
+    tuple — `pc 0.20 + ev 0.20 + di 0.20 + ms 0.10 + vr 0.15 + ic 0.15`.
+    Drift in either implementation surfaces as a real disagreement.
+
+    `signals` keys: problem_clarity, execution_vs_ambition,
+    differentiation, market_signals, viability_risks,
+    intellectual_contribution. All floats.
+    """
+    if shutil.which(LEX_BINARY) is None or not BUSINESS_SCORE_PATH.exists():
+        return None
+    # Force float encoding — JSON int → lex Int → arithmetic-with-Float
+    # mismatch at runtime.
+    encoded = {k: float(v) for k, v in signals.items()}
+    try:
+        result = subprocess.run(
+            [
+                LEX_BINARY, "run", str(BUSINESS_SCORE_PATH),
+                "cross_check_business_score", json.dumps(encoded),
+            ],
+            capture_output=True, text=True, timeout=TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        parsed = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(parsed, dict) or "score" not in parsed:
+        return None
+    return float(parsed["score"])
+
+
+def compare_business_score(py_score: float, lex_score: float) -> list[str]:
+    """Diff Python's business overall score vs lex's, with 0.05 tolerance."""
+    if abs(py_score - lex_score) > 0.05:
+        return [f"score: python={py_score} lex={lex_score}"]
+    return []
 
 
 def compare_tech_score(py_score: float, lex_score: float) -> list[str]:
