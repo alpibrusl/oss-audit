@@ -283,7 +283,10 @@ def run_audit(source: str, skip_business: bool = False,
             # cross-check above) already validates that path with
             # the general-weight scorer.
             if os.environ.get("RUBRIC_LEX_CROSS_CHECK") == "1":
-                from .lex_cross_check import compare_lens_score, lex_lens_score
+                from .lex_cross_check import (
+                    compare_lens_guard, compare_lens_score,
+                    lex_lens_guard, lex_lens_score,
+                )
                 lex_l = lex_lens_score(report, lens.name)
                 if lex_l is not None:
                     ldiffs = compare_lens_score(
@@ -293,6 +296,20 @@ def run_audit(source: str, skip_business: bool = False,
                         step("⚠️  lex/python lens-score disagree: " + "; ".join(ldiffs))
                     else:
                         step(f"✓ lex cross-check (lens-score, {lens.name}): agree")
+                # Lens-guard verdict downgrade — only meaningful for
+                # lenses with `require_no_critical`, but the lex side
+                # is robust to other lens names (returns code unchanged).
+                has_critical = any(
+                    f.severity == "critical"
+                    for f in report.technical.findings
+                )
+                lex_g = lex_lens_guard(base_verdict.code, has_critical, lens.name)
+                if lex_g is not None:
+                    gdiffs = compare_lens_guard(report.verdict.code, lex_g)
+                    if gdiffs:
+                        step("⚠️  lex/python lens-guard disagree: " + "; ".join(gdiffs))
+                    else:
+                        step(f"✓ lex cross-check (lens-guard, {lens.name}): agree")
 
         return report
     finally:
