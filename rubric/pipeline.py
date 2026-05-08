@@ -128,10 +128,11 @@ def run_audit(source: str, skip_business: bool = False,
         # artifacts.
         if os.environ.get("RUBRIC_LEX_CROSS_CHECK") == "1":
             from .lex_cross_check import (
-                compare, compare_agent_readiness, compare_community_score,
-                compare_composability, compare_gh_metrics, compare_ingest,
-                compare_ingest_io, compare_lang_dispatch, compare_tech_score,
-                compare_universal, lex_agent_readiness, lex_community_score,
+                compare, compare_agent_readiness, compare_business_score,
+                compare_community_score, compare_composability,
+                compare_gh_metrics, compare_ingest, compare_ingest_io,
+                compare_lang_dispatch, compare_tech_score, compare_universal,
+                lex_agent_readiness, lex_business_score, lex_community_score,
                 lex_composability, lex_gh_metrics, lex_ingest, lex_ingest_io,
                 lex_lang_dispatch, lex_tech_score, lex_universal, lex_verdict,
             )
@@ -183,6 +184,26 @@ def run_audit(source: str, skip_business: bool = False,
                             step("⚠️  lex/python tech-score disagree: " + "; ".join(tsdiffs))
                         else:
                             step("✓ lex cross-check (tech-score): agree")
+                # Business-score cross-check — validates the v0.5
+                # weight tuple over the 6 LLM-produced sub-scores.
+                # Skipped silently when business is unavailable
+                # (LLM failed) or skipped.
+                if not skip_business and report.business.data_status == "available":
+                    biz_signals = {
+                        "problem_clarity":           report.business.problem_clarity,
+                        "execution_vs_ambition":     report.business.execution_vs_ambition,
+                        "differentiation":           report.business.differentiation,
+                        "market_signals":            report.business.market_signals,
+                        "viability_risks":           report.business.viability_risks,
+                        "intellectual_contribution": report.business.intellectual_contribution,
+                    }
+                    lex_bs = lex_business_score(biz_signals)
+                    if lex_bs is not None:
+                        bsdiffs = compare_business_score(report.business.score, lex_bs)
+                        if bsdiffs:
+                            step("⚠️  lex/python business-score disagree: " + "; ".join(bsdiffs))
+                        else:
+                            step("✓ lex cross-check (business-score): agree")
                 # Composability cross-check — pure detection over the
                 # repo's manifests. Walks the same files Python read.
                 lex_comp = lex_composability(repo_path)
