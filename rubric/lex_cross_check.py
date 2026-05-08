@@ -27,7 +27,8 @@ LEX_BINARY = "lex"
 LEX_POC_ROOT = Path(__file__).resolve().parent.parent / "lex-poc" / "src"
 ADAPTER_PATH = LEX_POC_ROOT / "adapter.lex"
 UNIVERSAL_PATH = LEX_POC_ROOT / "universal.lex"
-INGESTION_PATH = LEX_POC_ROOT / "ingestion.lex"
+INGESTION_PATH    = LEX_POC_ROOT / "ingestion.lex"
+INGESTION_IO_PATH = LEX_POC_ROOT / "ingestion_io.lex"
 TIMEOUT_SECONDS = 10
 
 
@@ -231,6 +232,94 @@ def lex_ingest(
     if not isinstance(parsed, dict) or not required <= parsed.keys():
         return None
     return {k: parsed[k] for k in required}
+
+
+def lex_ingest_io(repo_path: Path | str, has_traction: bool) -> dict | None:
+    """Run lex's `cross_check_ingest_io` over the repo on disk.
+
+    Walks the repo with `[fs_walk, io]` to compute the language
+    breakdown + doc-chars + classify decision. Compared against
+    Python's `detect_languages` and `classify_repo_type` outputs.
+
+    Returns a dict with these keys, or None on failure:
+      total_files (int)
+      total_loc   (int)
+      per_lang    (list[tuple[str, int, float]])  — sorted by lang
+      doc_chars   (int)
+      classified  (str)  — "implementation" | "proposal"
+      reason      (str)
+    """
+    if shutil.which(LEX_BINARY) is None or not INGESTION_IO_PATH.exists():
+        return None
+    repo = str(Path(repo_path).resolve())
+    try:
+        result = subprocess.run(
+            [
+                LEX_BINARY, "run",
+                "--allow-effects", "fs_walk,io",
+                "--allow-fs-read", repo,
+                str(INGESTION_IO_PATH), "cross_check_ingest_io",
+                json.dumps(repo),
+                json.dumps(bool(has_traction)),
+            ],
+            capture_output=True, text=True, timeout=TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        parsed = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    required = {
+        "total_files", "total_loc", "per_lang",
+        "doc_chars", "classified", "reason",
+    }
+    if not isinstance(parsed, dict) or not required <= parsed.keys():
+        return None
+    return {
+        "total_files": int(parsed["total_files"]),
+        "total_loc":   int(parsed["total_loc"]),
+        "per_lang":    [tuple(x) for x in parsed["per_lang"]],
+        "doc_chars":   int(parsed["doc_chars"]),
+        "classified":  parsed["classified"],
+        "reason":      parsed["reason"],
+    }
+
+
+def compare_ingest_io(
+    py_total_files: int, py_total_loc: int,
+    py_per_lang: dict[str, float], py_repo_type: str,
+    lex_result: dict,
+) -> list[str]:
+    """Diff Python's detect_languages + classify_repo_type vs lex.
+
+    Python returns percentages directly (`{lang: pct}`); lex returns
+    `(lang, loc, pct)` triples. Compare on the (lang, pct) projection
+    after sorting both alphabetically. The `reason` field embeds the
+    LOC count, which already drops out of the loc/files comparison —
+    no value comparing it character-by-character.
+    """
+    diffs: list[str] = []
+    if py_total_files != lex_result["total_files"]:
+        diffs.append(
+            f"total_files: python={py_total_files} lex={lex_result['total_files']}"
+        )
+    if py_total_loc != lex_result["total_loc"]:
+        diffs.append(
+            f"total_loc: python={py_total_loc} lex={lex_result['total_loc']}"
+        )
+    py_pct = sorted(py_per_lang.items())
+    lex_pct = sorted((lang, pct) for (lang, _, pct) in lex_result["per_lang"])
+    if py_pct != lex_pct:
+        diffs.append(f"per_lang_pct: python={py_pct} lex={lex_pct}")
+    if py_repo_type != lex_result["classified"]:
+        diffs.append(
+            f"repo_type: python={py_repo_type!r} lex={lex_result['classified']!r}"
+        )
+    return diffs
 
 
 def compare_ingest(url: str, lex_result: dict) -> list[str]:
