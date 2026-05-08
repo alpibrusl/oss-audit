@@ -128,9 +128,10 @@ def run_audit(source: str, skip_business: bool = False,
         # artifacts.
         if os.environ.get("RUBRIC_LEX_CROSS_CHECK") == "1":
             from .lex_cross_check import (
-                compare, compare_community_score, compare_composability,
-                compare_ingest, compare_ingest_io, compare_tech_score,
-                compare_universal, lex_community_score, lex_composability,
+                compare, compare_agent_readiness, compare_community_score,
+                compare_composability, compare_ingest, compare_ingest_io,
+                compare_tech_score, compare_universal,
+                lex_agent_readiness, lex_community_score, lex_composability,
                 lex_ingest, lex_ingest_io, lex_tech_score,
                 lex_universal, lex_verdict,
             )
@@ -209,6 +210,20 @@ def run_audit(source: str, skip_business: bool = False,
                             step("⚠️  lex/python community-score disagree: " + "; ".join(csdiffs))
                         else:
                             step(f"✓ lex cross-check (community-score, {comm_mode}): agree")
+                # Agent-readiness — pure detection over the same files
+                # the community pillar already inspected. Walks repo
+                # for examples/ runnable check; cheap.
+                lex_ar = lex_agent_readiness(repo_path)
+                if lex_ar is not None:
+                    ardiffs = compare_agent_readiness(
+                        report.community.agent_readiness_score,
+                        report.community.agent_readiness_signals,
+                        lex_ar,
+                    )
+                    if ardiffs:
+                        step("⚠️  lex/python agent-readiness disagree: " + "; ".join(ardiffs))
+                    else:
+                        step("✓ lex cross-check (agent-readiness): agree")
             # Universal detectors pilot — license + SECURITY.md (cross-check),
             # plus manifest_license + ci_security_tools (lex-only signals
             # absorbed into the technical pillar's findings).
