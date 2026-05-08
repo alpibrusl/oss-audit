@@ -33,6 +33,7 @@ TECH_SCORE_PATH      = LEX_POC_ROOT / "tech_score.lex"
 COMMUNITY_SCORE_PATH = LEX_POC_ROOT / "community_score.lex"
 COMPOSABILITY_PATH   = LEX_POC_ROOT / "composability.lex"
 LENS_SCORER_PATH     = LEX_POC_ROOT / "lens_scorer.lex"
+AGENT_READINESS_PATH = LEX_POC_ROOT / "agent_readiness.lex"
 TIMEOUT_SECONDS = 10
 
 
@@ -575,6 +576,62 @@ def compare_lens_guard(py_code: str, lex_code: str) -> list[str]:
     if py_code != lex_code:
         return [f"code: python={py_code!r} lex={lex_code!r}"]
     return []
+
+
+# ---------- agent-readiness cross-check (pilot) -----------------
+
+def lex_agent_readiness(repo_path: Path | str) -> dict | None:
+    """Run lex's `cross_check_agent_readiness` over the repo on disk.
+
+    Walks the same files Python's `score_agent_readiness` looks at
+    (CLAUDE.md / AGENTS.md / .cursorrules / .cli / mcp.json /
+    examples/) plus the recursive examples-runnable check. Effect
+    surface is `[fs_walk]` only — no file content is read, just
+    sizes + listings.
+
+    Returns `{score: int, signals: list[str]}`, or None on failure.
+    """
+    if shutil.which(LEX_BINARY) is None or not AGENT_READINESS_PATH.exists():
+        return None
+    repo = str(Path(repo_path).resolve())
+    try:
+        result = subprocess.run(
+            [
+                LEX_BINARY, "run",
+                "--allow-effects", "fs_walk",
+                "--allow-fs-read", repo,
+                str(AGENT_READINESS_PATH), "cross_check_agent_readiness",
+                json.dumps(repo),
+            ],
+            capture_output=True, text=True, timeout=TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        parsed = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(parsed, dict) or "score" not in parsed or "signals" not in parsed:
+        return None
+    return {
+        "score":   int(parsed["score"]),
+        "signals": list(parsed["signals"]),
+    }
+
+
+def compare_agent_readiness(
+    py_score: int, py_signals: list[str], lex_result: dict,
+) -> list[str]:
+    """Diff Python's agent-readiness output vs lex's. Order matters."""
+    diffs: list[str] = []
+    if py_score != lex_result["score"]:
+        diffs.append(f"score: python={py_score} lex={lex_result['score']}")
+    if py_signals != lex_result["signals"]:
+        diffs.append(f"signals: python={py_signals!r} lex={lex_result['signals']!r}")
+    return diffs
 
 
 def compare_composability(
