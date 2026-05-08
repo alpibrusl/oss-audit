@@ -129,11 +129,11 @@ def run_audit(source: str, skip_business: bool = False,
         if os.environ.get("RUBRIC_LEX_CROSS_CHECK") == "1":
             from .lex_cross_check import (
                 compare, compare_agent_readiness, compare_community_score,
-                compare_composability, compare_ingest, compare_ingest_io,
-                compare_lang_dispatch, compare_tech_score, compare_universal,
-                lex_agent_readiness, lex_community_score, lex_composability,
-                lex_ingest, lex_ingest_io, lex_lang_dispatch,
-                lex_tech_score, lex_universal, lex_verdict,
+                compare_composability, compare_gh_metrics, compare_ingest,
+                compare_ingest_io, compare_lang_dispatch, compare_tech_score,
+                compare_universal, lex_agent_readiness, lex_community_score,
+                lex_composability, lex_gh_metrics, lex_ingest, lex_ingest_io,
+                lex_lang_dispatch, lex_tech_score, lex_universal, lex_verdict,
             )
             lex_r = lex_verdict(report)
             if lex_r is not None:
@@ -223,6 +223,27 @@ def run_audit(source: str, skip_business: bool = False,
                             step("⚠️  lex/python community-score disagree: " + "; ".join(csdiffs))
                         else:
                             step(f"✓ lex cross-check (community-score, {comm_mode}): agree")
+                # GitHub-metrics derivations — only when public mode
+                # actually fetched responses. Re-derives bus factor,
+                # commits-90d, has_releases via lex from the slimmed
+                # response stash. Catches drift in the aggregation
+                # math (sorting, percentage rounding, last-13-weeks
+                # window).
+                gh_responses = report.community.raw.get("gh_responses")
+                if gh_responses is not None:
+                    lex_gh = lex_gh_metrics(gh_responses)
+                    if lex_gh is not None:
+                        gdiffs = compare_gh_metrics(
+                            report.community.bus_factor_top1_pct,
+                            report.community.bus_factor_top3_pct,
+                            report.community.commits_last_90d,
+                            report.community.has_releases,
+                            lex_gh,
+                        )
+                        if gdiffs:
+                            step("⚠️  lex/python gh-metrics disagree: " + "; ".join(gdiffs))
+                        else:
+                            step("✓ lex cross-check (gh-metrics): agree")
                 # Agent-readiness — pure detection over the same files
                 # the community pillar already inspected. Walks repo
                 # for examples/ runnable check; cheap.

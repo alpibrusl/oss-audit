@@ -276,6 +276,23 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
         "avg_issue_close_days":  avg_close_days,    # float | None
     }
 
+    # Stash slimmed-down API responses too, so the gh-metrics
+    # cross-check can re-derive bus-factor / commits-90d / has-releases
+    # via lex without re-hitting the rate limit. Each list keeps only
+    # the fields the lex side actually consumes.
+    parti_all = (parti or {}).get("all", []) if isinstance(parti, dict) else []
+    gh_responses = {
+        "contributors": [
+            {"contributions": int(c.get("contributions", 0))}
+            for c in (contribs if isinstance(contribs, list) else [])
+        ],
+        "weeks":        [int(w) for w in (parti_all if isinstance(parti_all, list) else [])],
+        "releases":     [
+            {"id": int(r.get("id", 0))}
+            for r in (releases if isinstance(releases, list) else [])
+        ],
+    }
+
     return CommunityReport(
         score=score,
         stars=stars,
@@ -294,5 +311,9 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
         is_solo_active=is_solo_active,
         commits_per_author_90d=round(cpa_90d, 1),
         findings=findings,
-        raw={"signals": signals, "mode": "public"},
+        raw={
+            "signals": signals,
+            "mode": "public",
+            "gh_responses": gh_responses,
+        },
     )
