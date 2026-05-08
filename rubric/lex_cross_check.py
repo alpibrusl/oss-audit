@@ -32,6 +32,7 @@ INGESTION_IO_PATH    = LEX_POC_ROOT / "ingestion_io.lex"
 TECH_SCORE_PATH      = LEX_POC_ROOT / "tech_score.lex"
 COMMUNITY_SCORE_PATH = LEX_POC_ROOT / "community_score.lex"
 COMPOSABILITY_PATH   = LEX_POC_ROOT / "composability.lex"
+LENS_SCORER_PATH     = LEX_POC_ROOT / "lens_scorer.lex"
 TIMEOUT_SECONDS = 10
 
 
@@ -479,6 +480,56 @@ def lex_composability(repo_path: Path | str) -> dict | None:
         "score":    int(parsed["score"]),
         "surfaces": list(parsed["surfaces"]),
     }
+
+
+# ---------- lens-aware scoring cross-check (pilot) --------------
+
+def lex_lens_score(report: AuditReport, lens_name: str) -> dict | None:
+    """Run lex's `cross_check_lens_score` for the given lens.
+
+    Returns `{grade: str, score: float}`, or None on any failure.
+    Pure (no fs / no proc / no net effects) — the Report record is
+    serialized in the same shape `lex_verdict` uses.
+    """
+    if shutil.which(LEX_BINARY) is None or not LENS_SCORER_PATH.exists():
+        return None
+    payload = json.dumps(_report_to_lex_json(report))
+    try:
+        result = subprocess.run(
+            [
+                LEX_BINARY, "run", str(LENS_SCORER_PATH),
+                "cross_check_lens_score", payload, json.dumps(lens_name),
+            ],
+            capture_output=True, text=True, timeout=TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        parsed = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(parsed, dict) or not {"grade", "score"} <= parsed.keys():
+        return None
+    return {"grade": parsed["grade"], "score": float(parsed["score"])}
+
+
+def compare_lens_score(
+    py_score: float, py_grade: str, lex_result: dict,
+) -> list[str]:
+    """Diff Python's lens-applied (overall_score, grade) vs lex's.
+
+    Same 0.05 score tolerance the rubric cross-check uses; grade
+    must match exactly (string compare).
+    """
+    diffs: list[str] = []
+    if abs(py_score - lex_result["score"]) > 0.05:
+        diffs.append(f"score: python={py_score} lex={lex_result['score']}")
+    if py_grade != lex_result["grade"]:
+        diffs.append(f"grade: python={py_grade!r} lex={lex_result['grade']!r}")
+    return diffs
 
 
 def compare_composability(
