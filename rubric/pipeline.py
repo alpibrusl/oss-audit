@@ -278,6 +278,21 @@ def run_audit(source: str, skip_business: bool = False,
                 idea_band=guarded.idea_band, execution_band=guarded.execution_band,
                 relevance_band=guarded.relevance_band, actions=guarded.actions,
             )
+            # Cross-check the lens-applied score/grade. Skipped for
+            # the general lens because adapter.lex (the rubric
+            # cross-check above) already validates that path with
+            # the general-weight scorer.
+            if os.environ.get("RUBRIC_LEX_CROSS_CHECK") == "1":
+                from .lex_cross_check import compare_lens_score, lex_lens_score
+                lex_l = lex_lens_score(report, lens.name)
+                if lex_l is not None:
+                    ldiffs = compare_lens_score(
+                        report.overall_score, report.grade, lex_l,
+                    )
+                    if ldiffs:
+                        step("⚠️  lex/python lens-score disagree: " + "; ".join(ldiffs))
+                    else:
+                        step(f"✓ lex cross-check (lens-score, {lens.name}): agree")
 
         return report
     finally:
