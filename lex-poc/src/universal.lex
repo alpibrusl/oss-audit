@@ -5,9 +5,9 @@
 #   - exercises std.fs.exists / fs.list_dir (gated by [fs_walk])
 #   - exercises std.io.read (gated by [io])
 #   - exercises std.str (pure)
-#   - exercises std.toml + std.yaml (pure, with #168's type-driven
-#     missing-field validation — partial parses now produce Result::Err
-#     instead of crashing at field access).
+#   - exercises std.toml (with v0.3's nested-path `parse_strict` —
+#     missing required dotted paths return Result::Err instead of
+#     crashing at field-access time).
 # Together with the required scope flags, lex enforces this code can
 # only read the repo path it was given.
 #
@@ -18,25 +18,19 @@
 #   ci_security_tools(repo)     -> [fs_walk, io] List[Str]  # NEW: detects security tool invocations
 #   cross_check_universal(repo) -> [fs_walk, io] { ... full record }
 
-import "std.fs"     as fs
-import "std.io"     as io
-import "std.str"    as str
-import "std.list"   as list
-import "std.regex"  as regex
+import "std.fs"   as fs
+import "std.io"   as io
+import "std.str"  as str
+import "std.list" as list
+import "std.toml" as toml
 
 
 # --- license classification (pure) -------------------------------
 
-fn safe_slice(s :: Str, start :: Int, end :: Int) -> Str {
-  # str.slice panics on out-of-range; clamp to actual length.
-  let n := str.len(s)
-  let e := if end > n { n } else { end }
-  if start >= e { "" } else { str.slice(s, start, e) }
-}
-
 fn classify(content :: Str) -> Str {
-  let head := str.to_upper(safe_slice(content, 0, 500))
-  let head_short := safe_slice(head, 0, 200)
+  # str.slice clamps out-of-range as of lex v0.3 (PR #240).
+  let head := str.to_upper(str.slice(content, 0, 500))
+  let head_short := str.slice(head, 0, 200)
   if str.contains(head, "APACHE LICENSE") {
     "Apache-2.0"
   } else {
@@ -106,38 +100,59 @@ fn detect_security_md(repo :: Str) -> [fs_walk] Bool {
 # --- manifest-declared license (NEW) -----------------------------
 #
 # Extracts the declared license from pyproject.toml `[project].license`
-# or Cargo.toml `[package].license`. We use std.regex over the file
-# contents rather than typed `toml.parse` because lex-lang #168's
-# type-driven validation only covers top-level required fields —
-# nested `Inner.license` still crashes at field-access time. Regex
-# is fine here: both manifest types define license only in their
-# respective single section, so a content-level match is unambiguous.
+# or Cargo.toml `[package].license` via typed `toml.parse_strict` with
+# nested required-path validation (lex v0.3 PR #240). The parser
+# returns Err for any document missing the dotted path, so we fall
+# back to None without ever risking a field-access crash.
 
-fn extract_toml_license(content :: Str) -> Option[Str] {
-  match regex.compile("(?m)^license\\s*=\\s*\"([^\"]+)\"") {
+type PyMeta = { license :: Str }
+type PyDoc  = { project :: PyMeta }
+
+type CargoPkg = { license :: Str }
+type CargoDoc = { package :: CargoPkg }
+
+fn extract_pyproject_license(content :: Str) -> Option[Str] {
+  let p :: Result[PyDoc, Str] := toml.parse_strict(content, ["project.license"])
+  match p {
     Err(_) => None,
-    Ok(re) => match regex.find(re, content) {
-      None    => None,
-      Some(m) => list.head(m.groups),
-    },
+    Ok(d)  => Some(d.project.license),
   }
 }
 
-fn try_manifest(repo :: Str, name :: Str) -> [fs_walk, io] Option[Str] {
-  let p := str.concat(str.concat(repo, "/"), name)
+fn extract_cargo_license(content :: Str) -> Option[Str] {
+  let p :: Result[CargoDoc, Str] := toml.parse_strict(content, ["package.license"])
+  match p {
+    Err(_) => None,
+    Ok(d)  => Some(d.package.license),
+  }
+}
+
+fn read_pyproject(repo :: Str) -> [fs_walk, io] Option[Str] {
+  let p := str.concat(repo, "/pyproject.toml")
   match fs.exists(p) {
     false => None,
     true  => match io.read(p) {
       Err(_) => None,
-      Ok(c)  => extract_toml_license(c),
+      Ok(c)  => extract_pyproject_license(c),
+    },
+  }
+}
+
+fn read_cargo(repo :: Str) -> [fs_walk, io] Option[Str] {
+  let p := str.concat(repo, "/Cargo.toml")
+  match fs.exists(p) {
+    false => None,
+    true  => match io.read(p) {
+      Err(_) => None,
+      Ok(c)  => extract_cargo_license(c),
     },
   }
 }
 
 fn manifest_license(repo :: Str) -> [fs_walk, io] Str {
-  match try_manifest(repo, "pyproject.toml") {
+  match read_pyproject(repo) {
     Some(l) => l,
-    None    => match try_manifest(repo, "Cargo.toml") {
+    None    => match read_cargo(repo) {
       Some(l) => l,
       None    => "None",
     },
