@@ -35,6 +35,7 @@ COMPOSABILITY_PATH   = LEX_POC_ROOT / "composability.lex"
 LENS_SCORER_PATH     = LEX_POC_ROOT / "lens_scorer.lex"
 AGENT_READINESS_PATH = LEX_POC_ROOT / "agent_readiness.lex"
 HN_SOURCE_PATH       = LEX_POC_ROOT / "hn_source.lex"
+LANG_DISPATCH_PATH   = LEX_POC_ROOT / "lang_dispatch.lex"
 TIMEOUT_SECONDS = 10
 
 
@@ -665,6 +666,77 @@ def compare_extract_gh_url(py_url: str | None, lex_url: str | None) -> list[str]
     """Diff Python's `_extract_gh_url` output vs lex's."""
     if py_url != lex_url:
         return [f"match: python={py_url!r} lex={lex_url!r}"]
+    return []
+
+
+# ---------- per-language dispatcher cross-check (pilot) ---------
+
+# Python's `LANG_RUNNERS` keys are language names; multiple keys
+# can point to the same runner function (JavaScript & TypeScript
+# both use `run_js`). Lex returns the canonical runner name for
+# each. Translate Python's keys to canonical names so we compare
+# apples-to-apples.
+_LANG_TO_RUNNER = {
+    "Rust":       "Rust",
+    "Python":     "Python",
+    "JavaScript": "JS",
+    "TypeScript": "JS",
+    "Go":         "Go",
+}
+
+
+def lex_lang_dispatch(languages: dict[str, float]) -> list[str] | None:
+    """Run lex's `cross_check_dispatch` over a percentage breakdown.
+
+    Returns the canonical runner names lex would invoke (in input
+    order, deduped). Pure (no fs / proc / net effects).
+    """
+    if shutil.which(LEX_BINARY) is None or not LANG_DISPATCH_PATH.exists():
+        return None
+    payload = [{"name": k, "pct": float(v)} for k, v in languages.items()]
+    try:
+        result = subprocess.run(
+            [
+                LEX_BINARY, "run", str(LANG_DISPATCH_PATH),
+                "cross_check_dispatch", json.dumps(payload),
+            ],
+            capture_output=True, text=True, timeout=TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        parsed = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(parsed, dict) or "runners" not in parsed:
+        return None
+    return list(parsed["runners"])
+
+
+def compare_lang_dispatch(
+    py_lang_results: dict, languages: dict[str, float], lex_runners: list[str],
+) -> list[str]:
+    """Diff Python's run_for_languages selection vs lex's dispatch.
+
+    Python returns a results dict keyed by language NAME; the
+    cross-check translates each key to its canonical runner name and
+    dedupes (in input order). Then both sides compare as lists of
+    canonical runners.
+    """
+    py_runners: list[str] = []
+    for lang in languages:  # iterate by input order
+        if lang not in py_lang_results:
+            continue
+        runner = _LANG_TO_RUNNER.get(lang)
+        if runner is None:
+            continue
+        if runner not in py_runners:
+            py_runners.append(runner)
+    if py_runners != lex_runners:
+        return [f"runners: python={py_runners!r} lex={lex_runners!r}"]
     return []
 
 
