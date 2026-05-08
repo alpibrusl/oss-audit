@@ -128,10 +128,10 @@ def run_audit(source: str, skip_business: bool = False,
         # artifacts.
         if os.environ.get("RUBRIC_LEX_CROSS_CHECK") == "1":
             from .lex_cross_check import (
-                compare, compare_ingest, compare_ingest_io,
-                compare_tech_score, compare_universal,
-                lex_ingest, lex_ingest_io, lex_tech_score,
-                lex_universal, lex_verdict,
+                compare, compare_community_score, compare_ingest,
+                compare_ingest_io, compare_tech_score, compare_universal,
+                lex_community_score, lex_ingest, lex_ingest_io,
+                lex_tech_score, lex_universal, lex_verdict,
             )
             lex_r = lex_verdict(report)
             if lex_r is not None:
@@ -181,6 +181,20 @@ def run_audit(source: str, skip_business: bool = False,
                             step("⚠️  lex/python tech-score disagree: " + "; ".join(tsdiffs))
                         else:
                             step("✓ lex cross-check (tech-score): agree")
+            # Community-score cross-check — same pattern as tech.
+            # Skipped silently when the API failed (no `signals`
+            # stashed) or when the pillar was skipped entirely.
+            if not skip_community:
+                comm_signals = report.community.raw.get("signals")
+                comm_mode    = report.community.raw.get("mode")
+                if comm_signals is not None and comm_mode in {"public", "private"}:
+                    lex_cs = lex_community_score(comm_signals, comm_mode)
+                    if lex_cs is not None:
+                        csdiffs = compare_community_score(report.community.score, lex_cs)
+                        if csdiffs:
+                            step("⚠️  lex/python community-score disagree: " + "; ".join(csdiffs))
+                        else:
+                            step(f"✓ lex cross-check (community-score, {comm_mode}): agree")
             # Universal detectors pilot — license + SECURITY.md (cross-check),
             # plus manifest_license + ci_security_tools (lex-only signals
             # absorbed into the technical pillar's findings).

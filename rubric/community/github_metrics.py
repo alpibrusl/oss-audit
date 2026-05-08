@@ -262,6 +262,20 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
 
     score = min(round(score, 1), 100.0)
 
+    # Stash the per-axis inputs so the lex cross-check (and any
+    # future external scorer) can validate the score without
+    # re-fetching the GitHub API. Mirrors the lex
+    # `CommunityPublicSignals` record exactly.
+    signals = {
+        "stars":                 int(stars),
+        "commits_90d":           int(commits_90d),
+        "contributors_count":    int(contributors_count),
+        "last_commit_days":      last_commit_days,  # int | None
+        "agent_readiness_score": int(ar_score),
+        "has_releases":          bool(has_releases),
+        "avg_issue_close_days":  avg_close_days,    # float | None
+    }
+
     return CommunityReport(
         score=score,
         stars=stars,
@@ -280,4 +294,5 @@ def audit_community(meta: RepoMeta, repo_path: Path | None = None) -> CommunityR
         is_solo_active=is_solo_active,
         commits_per_author_90d=round(cpa_90d, 1),
         findings=findings,
+        raw={"signals": signals, "mode": "public"},
     )

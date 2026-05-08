@@ -27,9 +27,10 @@ LEX_BINARY = "lex"
 LEX_POC_ROOT = Path(__file__).resolve().parent.parent / "lex-poc" / "src"
 ADAPTER_PATH = LEX_POC_ROOT / "adapter.lex"
 UNIVERSAL_PATH = LEX_POC_ROOT / "universal.lex"
-INGESTION_PATH    = LEX_POC_ROOT / "ingestion.lex"
-INGESTION_IO_PATH = LEX_POC_ROOT / "ingestion_io.lex"
-TECH_SCORE_PATH   = LEX_POC_ROOT / "tech_score.lex"
+INGESTION_PATH       = LEX_POC_ROOT / "ingestion.lex"
+INGESTION_IO_PATH    = LEX_POC_ROOT / "ingestion_io.lex"
+TECH_SCORE_PATH      = LEX_POC_ROOT / "tech_score.lex"
+COMMUNITY_SCORE_PATH = LEX_POC_ROOT / "community_score.lex"
 TIMEOUT_SECONDS = 10
 
 
@@ -367,6 +368,70 @@ def compare_tech_score(py_score: float, lex_score: float) -> list[str]:
     1e-12-class float-arithmetic drift while still catching real
     weight changes.
     """
+    if abs(py_score - lex_score) > 0.05:
+        return [f"score: python={py_score} lex={lex_score}"]
+    return []
+
+
+# ---------- community-score cross-check (pilot) -----------------
+
+def _opt(value):
+    """Encode a Python `int | float | None` as lex `Option`."""
+    if value is None:
+        return {"$variant": "None", "args": []}
+    return {"$variant": "Some", "args": [value]}
+
+
+_OPTIONAL_FIELDS = {"last_commit_days", "avg_issue_close_days"}
+
+
+def lex_community_score(signals: dict, mode: str) -> float | None:
+    """Run lex's `cross_check_community_score_*` over Python's signals.
+
+    `mode` selects between the public-mode (GitHub API) and internal-mode
+    (local clone) scorers — they have different weights and inputs.
+    Returns the lex-computed score, or None on any failure.
+
+    Optional Python fields (`int | None`, `float | None`) are auto-wrapped
+    into the lex `Option` encoding here so callers can stash plain values
+    on `CommunityReport.raw` without thinking about marshaling.
+    """
+    if shutil.which(LEX_BINARY) is None or not COMMUNITY_SCORE_PATH.exists():
+        return None
+    if mode == "public":
+        entry = "cross_check_community_score_public"
+    elif mode == "private":
+        entry = "cross_check_community_score_internal"
+    else:
+        return None
+    encoded = {
+        k: (_opt(v) if k in _OPTIONAL_FIELDS else v)
+        for k, v in signals.items()
+    }
+    try:
+        result = subprocess.run(
+            [
+                LEX_BINARY, "run", str(COMMUNITY_SCORE_PATH),
+                entry, json.dumps(encoded),
+            ],
+            capture_output=True, text=True, timeout=TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        parsed = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(parsed, dict) or "score" not in parsed:
+        return None
+    return float(parsed["score"])
+
+
+def compare_community_score(py_score: float, lex_score: float) -> list[str]:
+    """Diff Python's community score against lex's, with 0.05 tolerance."""
     if abs(py_score - lex_score) > 0.05:
         return [f"score: python={py_score} lex={lex_score}"]
     return []
