@@ -29,6 +29,7 @@ ADAPTER_PATH = LEX_POC_ROOT / "adapter.lex"
 UNIVERSAL_PATH = LEX_POC_ROOT / "universal.lex"
 INGESTION_PATH    = LEX_POC_ROOT / "ingestion.lex"
 INGESTION_IO_PATH = LEX_POC_ROOT / "ingestion_io.lex"
+TECH_SCORE_PATH   = LEX_POC_ROOT / "tech_score.lex"
 TIMEOUT_SECONDS = 10
 
 
@@ -320,6 +321,55 @@ def compare_ingest_io(
             f"repo_type: python={py_repo_type!r} lex={lex_result['classified']!r}"
         )
     return diffs
+
+
+# ---------- technical-score cross-check (pilot) -----------------
+
+def lex_tech_score(signals: dict) -> float | None:
+    """Run lex's `cross_check_tech_score` over Python's tech signals.
+
+    Pure (no fs / no proc effects). Validates that the per-axis
+    weights + thresholds + 100-cap + round-to-1 logic match between
+    the two implementations — this is the calibration-sensitive
+    surface that drifts as we tune.
+
+    `signals` must contain the 13 keys from the lex `TechSignals`
+    record. Returns the lex-computed score, or None on any failure.
+    """
+    if shutil.which(LEX_BINARY) is None or not TECH_SCORE_PATH.exists():
+        return None
+    try:
+        result = subprocess.run(
+            [
+                LEX_BINARY, "run", str(TECH_SCORE_PATH),
+                "cross_check_tech_score", json.dumps(signals),
+            ],
+            capture_output=True, text=True, timeout=TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        parsed = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(parsed, dict) or "score" not in parsed:
+        return None
+    return float(parsed["score"])
+
+
+def compare_tech_score(py_score: float, lex_score: float) -> list[str]:
+    """Diff Python's technical score against lex's, with 0.05 tolerance.
+
+    Same threshold the report-level cross-check uses — accommodates
+    1e-12-class float-arithmetic drift while still catching real
+    weight changes.
+    """
+    if abs(py_score - lex_score) > 0.05:
+        return [f"score: python={py_score} lex={lex_score}"]
+    return []
 
 
 def compare_ingest(url: str, lex_result: dict) -> list[str]:

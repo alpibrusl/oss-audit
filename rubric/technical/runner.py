@@ -151,6 +151,26 @@ def audit_technical(meta: RepoMeta, repo_path: Path) -> TechnicalReport:
 
     score = min(round(score, 1), 100.0)
 
+    # Stash the per-axis inputs on `raw` so the lex cross-check
+    # (and any future external scorer) can validate the score
+    # without re-aggregating tool output. Mirrors the lex
+    # `TechSignals` record exactly.
+    signals = {
+        "has_tests":           universal["has_tests"],
+        "test_density":        float(universal.get("test_density", 0.0)),
+        "has_fuzz_tests":      bool(universal.get("has_fuzz_tests", False)),
+        "has_property_tests":  bool(universal.get("has_property_tests", False)),
+        "has_ci":              universal["has_ci"],
+        "secrets_count":       int(secrets),
+        "total_vulns":         int(total_vulns),
+        "total_lint_warnings": int(total_lint_warnings),
+        "total_lint_errors":   int(total_lint_errors),
+        "has_security_policy": bool(universal["has_security_policy"]),
+        "has_license":         bool(universal["license"] and universal["license"] != "Unknown"),
+        "comp_score":          float(comp_score),
+        "tools_run_count":     len(tools_run),
+    }
+
     return TechnicalReport(
         score=score,
         has_tests=universal["has_tests"],
@@ -168,5 +188,6 @@ def audit_technical(meta: RepoMeta, repo_path: Path) -> TechnicalReport:
         raw={
             "universal": {k: v for k, v in universal.items() if k != "secret_findings"},
             "languages": lang_results,
+            "signals":   signals,
         },
     )
