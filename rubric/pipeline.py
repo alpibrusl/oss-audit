@@ -130,10 +130,10 @@ def run_audit(source: str, skip_business: bool = False,
             from .lex_cross_check import (
                 compare, compare_agent_readiness, compare_community_score,
                 compare_composability, compare_ingest, compare_ingest_io,
-                compare_tech_score, compare_universal,
+                compare_lang_dispatch, compare_tech_score, compare_universal,
                 lex_agent_readiness, lex_community_score, lex_composability,
-                lex_ingest, lex_ingest_io, lex_tech_score,
-                lex_universal, lex_verdict,
+                lex_ingest, lex_ingest_io, lex_lang_dispatch,
+                lex_tech_score, lex_universal, lex_verdict,
             )
             lex_r = lex_verdict(report)
             if lex_r is not None:
@@ -196,6 +196,19 @@ def run_audit(source: str, skip_business: bool = False,
                         step("⚠️  lex/python composability disagree: " + "; ".join(cdiffs))
                     else:
                         step("✓ lex cross-check (composability): agree")
+                # Language-dispatch cross-check — which runners would
+                # fire given the percentage breakdown. Catches drift
+                # in the 5% threshold or the JS/TS dedup mapping.
+                lex_disp = lex_lang_dispatch(meta.languages)
+                if lex_disp is not None:
+                    py_lang_results = report.technical.raw.get("languages", {})
+                    ddiffs = compare_lang_dispatch(
+                        py_lang_results, meta.languages, lex_disp,
+                    )
+                    if ddiffs:
+                        step("⚠️  lex/python lang-dispatch disagree: " + "; ".join(ddiffs))
+                    else:
+                        step("✓ lex cross-check (lang-dispatch): agree")
             # Community-score cross-check — same pattern as tech.
             # Skipped silently when the API failed (no `signals`
             # stashed) or when the pillar was skipped entirely.
