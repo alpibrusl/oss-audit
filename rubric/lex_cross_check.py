@@ -27,6 +27,7 @@ LEX_BINARY = "lex"
 LEX_POC_ROOT = Path(__file__).resolve().parent.parent / "lex-poc" / "src"
 ADAPTER_PATH = LEX_POC_ROOT / "adapter.lex"
 UNIVERSAL_PATH = LEX_POC_ROOT / "universal.lex"
+INGESTION_PATH = LEX_POC_ROOT / "ingestion.lex"
 TIMEOUT_SECONDS = 10
 
 
@@ -180,4 +181,100 @@ def compare_universal(
         diffs.append(
             f"has_security_md: python={py_has_security_md} lex={lex_result['has_security_md']}"
         )
+    return diffs
+
+
+# ---------- pure-ingestion cross-check (pilot) -------------------
+
+def lex_ingest(
+    url: str, total_loc: int, doc_chars: int, has_traction: bool,
+) -> dict | None:
+    """Run lex's `cross_check_ingest` over the same inputs Python sees.
+
+    Pure (no fs / no proc effects), so this is a fast subprocess
+    roundtrip — just URL parsing + classify decision logic.
+
+    Returns a dict with these keys, or None on failure:
+      github_owner   (str)  — "" if URL isn't a GitHub repo
+      github_repo    (str)
+      gist_owner     (str)  — "" if URL isn't a gist
+      gist_id        (str)
+      classified     (str)  — "implementation" | "proposal"
+      reason         (str)  — human-readable
+    """
+    if shutil.which(LEX_BINARY) is None or not INGESTION_PATH.exists():
+        return None
+    try:
+        result = subprocess.run(
+            [
+                LEX_BINARY, "run", str(INGESTION_PATH), "cross_check_ingest",
+                json.dumps(url),
+                json.dumps(int(total_loc)),
+                json.dumps(int(doc_chars)),
+                json.dumps(bool(has_traction)),
+            ],
+            capture_output=True, text=True, timeout=TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        parsed = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    required = {
+        "github_owner", "github_repo", "gist_owner", "gist_id",
+        "classified", "reason",
+    }
+    if not isinstance(parsed, dict) or not required <= parsed.keys():
+        return None
+    return {k: parsed[k] for k in required}
+
+
+def compare_ingest(url: str, lex_result: dict) -> list[str]:
+    """Diff Python's URL parsers against lex's, on the same input.
+
+    Both implementations are called directly (not through the meta
+    fallback logic in `ingest()`, which adds a basename fallback for
+    non-GitHub / non-gist URLs that the parsers themselves don't
+    produce). Python's `parse_github_url` happens to match `gist.*`
+    URLs because the regex isn't anchored against `gist.` — lex
+    behaves the same way, so both parsers agree per-call even though
+    `ingest()` orchestrates around it.
+
+    The classify result in `lex_result` ("implementation" / "proposal")
+    is NOT compared here — Python's classify reads doc-chars from the
+    filesystem inside `ingest()`, and exposing that input through the
+    cross-check would mean duplicating the probe. Lands in the next
+    porting PR when classify gains its own [io] entry point.
+    """
+    # Imported lazily so this module stays importable when ingestion's
+    # transitive deps aren't on the path (it isn't, in practice — but
+    # keeps the cross-check's surface symmetric with the other helpers).
+    from .ingestion import parse_github_url, parse_gist_url
+
+    gh = parse_github_url(url)
+    gi = parse_gist_url(url)
+    py_gh_owner = gh[0] if gh else ""
+    py_gh_repo  = gh[1] if gh else ""
+    py_gist_owner = gi[0] if gi else ""
+    py_gist_id    = gi[1] if gi else ""
+
+    diffs: list[str] = []
+    if py_gh_owner != lex_result["github_owner"]:
+        diffs.append(
+            f"github_owner: python={py_gh_owner!r} lex={lex_result['github_owner']!r}"
+        )
+    if py_gh_repo != lex_result["github_repo"]:
+        diffs.append(
+            f"github_repo: python={py_gh_repo!r} lex={lex_result['github_repo']!r}"
+        )
+    if py_gist_owner != lex_result["gist_owner"]:
+        diffs.append(
+            f"gist_owner: python={py_gist_owner!r} lex={lex_result['gist_owner']!r}"
+        )
+    if py_gist_id != lex_result["gist_id"]:
+        diffs.append(f"gist_id: python={py_gist_id!r} lex={lex_result['gist_id']!r}")
     return diffs
