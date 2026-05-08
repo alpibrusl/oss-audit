@@ -36,6 +36,7 @@ LENS_SCORER_PATH     = LEX_POC_ROOT / "lens_scorer.lex"
 AGENT_READINESS_PATH = LEX_POC_ROOT / "agent_readiness.lex"
 HN_SOURCE_PATH       = LEX_POC_ROOT / "hn_source.lex"
 LANG_DISPATCH_PATH   = LEX_POC_ROOT / "lang_dispatch.lex"
+GH_METRICS_PATH      = LEX_POC_ROOT / "gh_metrics.lex"
 TIMEOUT_SECONDS = 10
 
 
@@ -714,6 +715,72 @@ def lex_lang_dispatch(languages: dict[str, float]) -> list[str] | None:
     if not isinstance(parsed, dict) or "runners" not in parsed:
         return None
     return list(parsed["runners"])
+
+
+# ---------- GitHub-metrics derivations cross-check (pilot) ------
+
+def lex_gh_metrics(gh_responses: dict) -> dict | None:
+    """Run lex's `cross_check_gh_metrics` over slimmed GitHub responses.
+
+    `gh_responses` is the structure stashed on
+    `CommunityReport.raw["gh_responses"]` — three lists projected
+    down to just the fields lex consumes:
+      - contributors: [{contributions: int}]
+      - weeks:        [int] (52-element participation feed)
+      - releases:     [{id: int}]
+
+    Returns `{bus_top1, bus_top3, commits_90d, has_releases}` or
+    None on failure.
+    """
+    if shutil.which(LEX_BINARY) is None or not GH_METRICS_PATH.exists():
+        return None
+    try:
+        result = subprocess.run(
+            [
+                LEX_BINARY, "run", str(GH_METRICS_PATH),
+                "cross_check_gh_metrics",
+                json.dumps(gh_responses.get("contributors", [])),
+                json.dumps(gh_responses.get("weeks", [])),
+                json.dumps(gh_responses.get("releases", [])),
+            ],
+            capture_output=True, text=True, timeout=TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        parsed = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    required = {"bus_top1", "bus_top3", "commits_90d", "has_releases"}
+    if not isinstance(parsed, dict) or not required <= parsed.keys():
+        return None
+    return {
+        "bus_top1":     float(parsed["bus_top1"]),
+        "bus_top3":     float(parsed["bus_top3"]),
+        "commits_90d":  int(parsed["commits_90d"]),
+        "has_releases": bool(parsed["has_releases"]),
+    }
+
+
+def compare_gh_metrics(
+    py_bus_top1: float, py_bus_top3: float,
+    py_commits_90d: int, py_has_releases: bool,
+    lex_result: dict,
+) -> list[str]:
+    """Diff Python's derived GitHub metrics vs lex's, with 0.05 tolerance on bus factor."""
+    diffs: list[str] = []
+    if abs(py_bus_top1 - lex_result["bus_top1"]) > 0.05:
+        diffs.append(f"bus_top1: python={py_bus_top1} lex={lex_result['bus_top1']}")
+    if abs(py_bus_top3 - lex_result["bus_top3"]) > 0.05:
+        diffs.append(f"bus_top3: python={py_bus_top3} lex={lex_result['bus_top3']}")
+    if py_commits_90d != lex_result["commits_90d"]:
+        diffs.append(f"commits_90d: python={py_commits_90d} lex={lex_result['commits_90d']}")
+    if py_has_releases != lex_result["has_releases"]:
+        diffs.append(f"has_releases: python={py_has_releases} lex={lex_result['has_releases']}")
+    return diffs
 
 
 def compare_lang_dispatch(
