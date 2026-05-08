@@ -102,6 +102,7 @@ class CommunityReport(BaseModel):
     is_solo_active: bool = False  # solo author + recent commits -> not abandoned
     commits_per_author_90d: float = 0.0  # velocity-per-author (AI-era signal)
     findings: list[Finding] = Field(default_factory=list)
+    raw: dict[str, Any] = Field(default_factory=dict)  # signals + lex/cross-check stash
 
 
 class VerdictPayload(BaseModel):

@@ -227,6 +227,21 @@ def audit_community_internal(meta: RepoMeta, repo_path: Path) -> CommunityReport
     score = min(round(score, 1), 100.0)
     cpa_90d = n_commits_90d / max(contributors_90d, 1) if contributors_90d else 0.0
 
+    # Stash the per-axis inputs so the lex cross-check can validate
+    # the score without rewalking git log + process docs. Mirrors
+    # the lex `CommunityInternalSignals` record exactly.
+    signals = {
+        "n_commits_90d":         int(n_commits_90d),
+        "contributors_total":    int(contributors_total),
+        "last_commit_days":      last_commit_days,  # int | None
+        "has_codeowners":        bool(has_codeowners),
+        "has_contributing":      bool(has_contributing),
+        "has_pr_template":       bool(has_pr_template),
+        "has_adrs":              bool(has_adrs),
+        "has_runbooks":          bool(has_runbooks),
+        "agent_readiness_score": int(ar_score),
+    }
+
     return CommunityReport(
         score=score,
         stars=0,  # not applicable in private mode
@@ -244,4 +259,5 @@ def audit_community_internal(meta: RepoMeta, repo_path: Path) -> CommunityReport
         is_solo_active=is_solo_active,
         commits_per_author_90d=round(cpa_90d, 1),
         findings=findings,
+        raw={"signals": signals, "mode": "private"},
     )
