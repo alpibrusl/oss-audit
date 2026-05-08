@@ -34,6 +34,7 @@ COMMUNITY_SCORE_PATH = LEX_POC_ROOT / "community_score.lex"
 COMPOSABILITY_PATH   = LEX_POC_ROOT / "composability.lex"
 LENS_SCORER_PATH     = LEX_POC_ROOT / "lens_scorer.lex"
 AGENT_READINESS_PATH = LEX_POC_ROOT / "agent_readiness.lex"
+HN_SOURCE_PATH       = LEX_POC_ROOT / "hn_source.lex"
 TIMEOUT_SECONDS = 10
 
 
@@ -620,6 +621,51 @@ def lex_agent_readiness(repo_path: Path | str) -> dict | None:
         "score":   int(parsed["score"]),
         "signals": list(parsed["signals"]),
     }
+
+
+# ---------- HN-source URL-extractor cross-check (pilot) ---------
+
+def lex_extract_gh_url(item_url: str, item_text: str) -> str | None:
+    """Run lex's `cross_check_extract_gh_url` over the same inputs.
+
+    Pure (no fs / proc / net effects). Returns the extracted URL,
+    or None if the lex side reported no match (encoded as `""`).
+    Returns None on any subprocess / parse failure too — callers
+    can't distinguish "no match" from "failure" but the test suite
+    asserts both lex and Python agree, which catches drift either way.
+    """
+    if shutil.which(LEX_BINARY) is None or not HN_SOURCE_PATH.exists():
+        return None
+    try:
+        result = subprocess.run(
+            [
+                LEX_BINARY, "run", str(HN_SOURCE_PATH),
+                "cross_check_extract_gh_url",
+                json.dumps(item_url),
+                json.dumps(item_text),
+            ],
+            capture_output=True, text=True, timeout=TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        parsed = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(parsed, dict) or "match_url" not in parsed:
+        return None
+    s = parsed["match_url"]
+    return s if s else None
+
+
+def compare_extract_gh_url(py_url: str | None, lex_url: str | None) -> list[str]:
+    """Diff Python's `_extract_gh_url` output vs lex's."""
+    if py_url != lex_url:
+        return [f"match: python={py_url!r} lex={lex_url!r}"]
+    return []
 
 
 def compare_agent_readiness(
