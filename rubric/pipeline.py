@@ -128,10 +128,11 @@ def run_audit(source: str, skip_business: bool = False,
         # artifacts.
         if os.environ.get("RUBRIC_LEX_CROSS_CHECK") == "1":
             from .lex_cross_check import (
-                compare, compare_community_score, compare_ingest,
-                compare_ingest_io, compare_tech_score, compare_universal,
-                lex_community_score, lex_ingest, lex_ingest_io,
-                lex_tech_score, lex_universal, lex_verdict,
+                compare, compare_community_score, compare_composability,
+                compare_ingest, compare_ingest_io, compare_tech_score,
+                compare_universal, lex_community_score, lex_composability,
+                lex_ingest, lex_ingest_io, lex_tech_score,
+                lex_universal, lex_verdict,
             )
             lex_r = lex_verdict(report)
             if lex_r is not None:
@@ -181,6 +182,19 @@ def run_audit(source: str, skip_business: bool = False,
                             step("⚠️  lex/python tech-score disagree: " + "; ".join(tsdiffs))
                         else:
                             step("✓ lex cross-check (tech-score): agree")
+                # Composability cross-check — pure detection over the
+                # repo's manifests. Walks the same files Python read.
+                lex_comp = lex_composability(repo_path)
+                if lex_comp is not None:
+                    cdiffs = compare_composability(
+                        report.technical.composability_score,
+                        report.technical.composability_surfaces,
+                        lex_comp,
+                    )
+                    if cdiffs:
+                        step("⚠️  lex/python composability disagree: " + "; ".join(cdiffs))
+                    else:
+                        step("✓ lex cross-check (composability): agree")
             # Community-score cross-check — same pattern as tech.
             # Skipped silently when the API failed (no `signals`
             # stashed) or when the pillar was skipped entirely.
