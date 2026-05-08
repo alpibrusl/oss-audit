@@ -128,8 +128,8 @@ def run_audit(source: str, skip_business: bool = False,
         # artifacts.
         if os.environ.get("RUBRIC_LEX_CROSS_CHECK") == "1":
             from .lex_cross_check import (
-                compare, compare_ingest, compare_universal,
-                lex_ingest, lex_universal, lex_verdict,
+                compare, compare_ingest, compare_ingest_io, compare_universal,
+                lex_ingest, lex_ingest_io, lex_universal, lex_verdict,
             )
             lex_r = lex_verdict(report)
             if lex_r is not None:
@@ -149,6 +149,23 @@ def run_audit(source: str, skip_business: bool = False,
                     step("⚠️  lex/python ingest disagree: " + "; ".join(idiffs))
                 else:
                     step("✓ lex cross-check (ingest): agree")
+            # I/O ingestion cross-check — language detection +
+            # doc-chars + classify decision. Walks the same tree
+            # Python just walked; expensive enough that we only do
+            # it when the cross-check env var is set.
+            lex_iio = lex_ingest_io(repo_path, has_traction=False)
+            if lex_iio is not None:
+                iiodiffs = compare_ingest_io(
+                    py_total_files=meta.total_files,
+                    py_total_loc=meta.total_loc,
+                    py_per_lang=meta.languages,
+                    py_repo_type=meta.repo_type,
+                    lex_result=lex_iio,
+                )
+                if iiodiffs:
+                    step("⚠️  lex/python ingest-io disagree: " + "; ".join(iiodiffs))
+                else:
+                    step("✓ lex cross-check (ingest-io): agree")
             # Universal detectors pilot — license + SECURITY.md (cross-check),
             # plus manifest_license + ci_security_tools (lex-only signals
             # absorbed into the technical pillar's findings).

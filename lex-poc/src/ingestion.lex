@@ -1,13 +1,8 @@
 # Ingestion — pure pieces of `rubric/ingestion.py`.
 #
-# This pilot ports the side-effect-free portion of the ingestion
-# layer: URL parsers (GitHub + gist), the extension→language map,
-# and the `classify_repo_type` decision function.
-#
-# Effect-having helpers (clone_repo via [proc], detect_languages via
-# [fs_walk], classify_repo_type's doc-chars probe via [io]) land in
-# a follow-up — keeping this PR pure makes it trivially cross-checkable
-# from Python without spinning up a temp git clone.
+# Side-effect-free portion only — the io / fs_walk port lives in
+# `ingestion_io.lex` so that the pure cross-check stays pure (lex's
+# effect checker treats the whole file's surface as the envelope).
 #
 # Exposed for the cross-check bridge:
 #   parse_github_url(url)        -> Option[(Str, Str)]
