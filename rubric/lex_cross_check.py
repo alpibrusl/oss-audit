@@ -38,6 +38,7 @@ HN_SOURCE_PATH       = LEX_POC_ROOT / "hn_source.lex"
 LANG_DISPATCH_PATH   = LEX_POC_ROOT / "lang_dispatch.lex"
 GH_METRICS_PATH      = LEX_POC_ROOT / "gh_metrics.lex"
 BUSINESS_SCORE_PATH  = LEX_POC_ROOT / "business_score.lex"
+BADGE_PATH           = LEX_POC_ROOT / "badge.lex"
 TIMEOUT_SECONDS = 10
 
 
@@ -413,6 +414,63 @@ def compare_business_score(py_score: float, lex_score: float) -> list[str]:
     if abs(py_score - lex_score) > 0.05:
         return [f"score: python={py_score} lex={lex_score}"]
     return []
+
+
+# ---------- badge cross-check (pilot) ---------------------------
+
+def lex_badge(
+    score: float, grade: str, label: str, link_url: str,
+) -> dict | None:
+    """Run lex's `cross_check_badge` for the given inputs.
+
+    Returns `{url, message, color, markdown}` or None on failure.
+    Pure (no fs / proc / net effects). All four outputs are
+    byte-for-byte comparable to Python.
+    """
+    if shutil.which(LEX_BINARY) is None or not BADGE_PATH.exists():
+        return None
+    try:
+        result = subprocess.run(
+            [
+                LEX_BINARY, "run", str(BADGE_PATH),
+                "cross_check_badge",
+                json.dumps(float(score)),
+                json.dumps(grade),
+                json.dumps(label),
+                json.dumps(link_url),
+            ],
+            capture_output=True, text=True, timeout=TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        parsed = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    required = {"url", "message", "color", "markdown"}
+    if not isinstance(parsed, dict) or not required <= parsed.keys():
+        return None
+    return {k: parsed[k] for k in required}
+
+
+def compare_badge(
+    py_url: str, py_message: str, py_color: str, py_markdown: str,
+    lex_result: dict,
+) -> list[str]:
+    """Diff Python's badge outputs vs lex's. Byte-for-byte comparison."""
+    diffs: list[str] = []
+    if py_url != lex_result["url"]:
+        diffs.append(f"url: python={py_url!r} lex={lex_result['url']!r}")
+    if py_message != lex_result["message"]:
+        diffs.append(f"message: python={py_message!r} lex={lex_result['message']!r}")
+    if py_color != lex_result["color"]:
+        diffs.append(f"color: python={py_color!r} lex={lex_result['color']!r}")
+    if py_markdown != lex_result["markdown"]:
+        diffs.append(f"markdown: python={py_markdown!r} lex={lex_result['markdown']!r}")
+    return diffs
 
 
 def compare_tech_score(py_score: float, lex_score: float) -> list[str]:
