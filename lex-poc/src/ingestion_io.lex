@@ -150,8 +150,14 @@ fn detect_languages(repo :: Str) -> [fs_walk, io] {
       match e { (_, n) => acc + n }
     })
   let per_lang_raw := _bucket_by_lang(kept)
-  let sorted := _sort_by_lang(per_lang_raw)
-  let with_pct := list.map(sorted,
+  # NOTE: deliberately NOT sorted lex-side. Lex's stdlib (as of v0.5)
+  # has no ordering on Str — only `==`. The cross-check bridge sorts
+  # both sides alphabetically before comparing, so insertion order
+  # here is fine. The earlier `_sort_by_lang` implementation tried
+  # `el < hl` on Str, which crashes at runtime on any repo with two
+  # or more known languages (caught in the calibration round on
+  # p-limit + bazel-skylib).
+  let with_pct := list.map(per_lang_raw,
     fn (e :: (Str, Int)) -> (Str, Int, Float) {
       match e {
         (lang, n) => {
@@ -202,30 +208,11 @@ fn _contains(xs :: List[Str], target :: Str) -> Bool {
     fn (acc :: Bool, x :: Str) -> Bool { acc or x == target })
 }
 
-# Insertion sort over (lang, loc) by lang ascending. Lists in audits
-# are tiny (≤17 known languages) so O(n²) is fine.
-fn _sort_by_lang(xs :: List[(Str, Int)]) -> List[(Str, Int)] {
-  list.fold(xs, [],
-    fn (acc :: List[(Str, Int)], e :: (Str, Int)) -> List[(Str, Int)] {
-      _insert_sorted(acc, e)
-    })
-}
-
-fn _insert_sorted(
-  acc :: List[(Str, Int)], e :: (Str, Int),
-) -> List[(Str, Int)] {
-  match list.head(acc) {
-    None => [e],
-    Some(h) => match (h, e) {
-      ((hl, _), (el, _)) =>
-        if el < hl {
-          list.concat([e], acc)
-        } else {
-          list.concat([h], _insert_sorted(list.tail(acc), e))
-        },
-    },
-  }
-}
+# NOTE: `_sort_by_lang` / `_insert_sorted` removed in the
+# calibration-round fix. They used `el < hl` on Str, which crashes
+# at runtime — lex stdlib (v0.5) has no string ordering. Bridge
+# sorts both sides alphabetically before comparing, so the lex side
+# emits insertion order.
 
 
 # --- doc_chars + classify wrapper --------------------------------
